@@ -10,206 +10,314 @@
       padding: 0;
     }
     body {
-      width: 300px;
-      padding: 16px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #111215;
-      color: #e4e4e7;
+      width: 316px;
+      padding: 18px;
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+      background: #0d0f17;
+      color: #f1f5f9;
       user-select: none;
       -webkit-font-smoothing: antialiased;
     }
-    .header {
+
+    /* Top bar */
+    .top-bar {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 16px;
+      margin-bottom: 18px;
     }
-    .app-title {
-      font-size: 13px;
-      font-weight: 600;
-      letter-spacing: 0.5px;
-      text-transform: uppercase;
-      color: #a1a1aa;
-    }
-    .status-badge {
-      display: inline-flex;
+    .brand {
+      display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 11px;
-      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-      color: #71717a;
+      gap: 7px;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: -0.3px;
+      color: #ffffff;
     }
-    .dot {
+    .brand-icon {
+      width: 18px;
+      height: 18px;
+      background: #3b82f6;
+      border-radius: 5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .brand-icon svg {
+      width: 11px;
+      height: 11px;
+      fill: white;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      font-weight: 500;
+      color: #94a3b8;
+      background: #171b26;
+      border: 1px solid #23293a;
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+    .status-dot {
       width: 6px;
       height: 6px;
       border-radius: 50%;
-      background: #71717a;
+      background: #ef4444;
+      transition: background 0.2s;
     }
-    .dot.online {
+    .status-dot.online {
       background: #10b981;
+      box-shadow: 0 0 6px rgba(16, 185, 129, 0.6);
     }
 
-    .warning-box {
+    /* Warning banner */
+    .offline-banner {
       display: none;
-      background: #1c1515;
-      border: 1px solid #3f2222;
-      border-radius: 4px;
-      padding: 8px 10px;
-      font-size: 11px;
-      color: #f87171;
-      margin-bottom: 12px;
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.25);
+      border-radius: 8px;
+      padding: 9px 11px;
+      font-size: 11.5px;
+      color: #fca5a5;
+      margin-bottom: 14px;
       line-height: 1.4;
+    }
+    .offline-banner code {
       font-family: ui-monospace, SFMono-Regular, monospace;
+      color: #fecaca;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 1px 4px;
+      border-radius: 3px;
     }
 
-    .field-label {
-      display: block;
-      font-size: 12px;
-      font-weight: 500;
-      color: #d4d4d8;
-      margin-bottom: 6px;
-    }
-    .input-text {
-      width: 100%;
-      padding: 9px 10px;
-      background: #18191e;
-      border: 1px solid #27272a;
-      border-radius: 5px;
-      color: #fafafa;
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.15s;
-    }
-    .input-text:focus {
-      border-color: #52525b;
-    }
-    .input-help {
-      font-size: 11px;
-      color: #71717a;
-      margin-top: 5px;
+    /* Main input area */
+    .input-group {
       margin-bottom: 16px;
     }
-
-    .btn {
+    .input-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e8f0;
+      margin-bottom: 8px;
+      letter-spacing: -0.1px;
+    }
+    .input-wrap {
+      position: relative;
+    }
+    .name-input {
       width: 100%;
-      padding: 9px 12px;
-      border-radius: 5px;
-      border: 1px solid transparent;
-      font-size: 12px;
+      padding: 11px 12px;
+      background: #151924;
+      border: 1px solid #242c3d;
+      border-radius: 9px;
+      color: #ffffff;
+      font-size: 14px;
       font-weight: 500;
+      outline: none;
+      transition: all 0.15s ease;
+    }
+    .name-input:focus {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+      background: #171c2a;
+    }
+    .name-input::placeholder {
+      color: #475569;
+    }
+    .input-hint {
+      font-size: 11px;
+      color: #64748b;
+      margin-top: 6px;
+    }
+
+    /* Button */
+    .btn-action {
+      width: 100%;
+      padding: 11px 14px;
+      border-radius: 9px;
+      border: none;
+      font-size: 13.5px;
+      font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.15s, border-color 0.15s;
+      gap: 7px;
+      transition: all 0.15s ease;
+      letter-spacing: -0.1px;
     }
-    .btn-primary {
-      background: #fafafa;
-      color: #09090b;
-      border-color: #fafafa;
+    .btn-start {
+      background: #2563eb;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
     }
-    .btn-primary:hover {
-      background: #e4e4e7;
+    .btn-start:hover {
+      background: #1d4ed8;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
     }
-    .btn-danger {
-      background: #271414;
-      color: #ef4444;
-      border-color: #451a1a;
-    }
-    .btn-danger:hover {
-      background: #361a1a;
+    .btn-start:active {
+      transform: scale(0.99);
     }
 
-    .active-card {
-      display: none;
-      background: #18191e;
-      border: 1px solid #27272a;
-      border-radius: 6px;
-      padding: 12px;
-      margin-bottom: 12px;
+    .btn-stop {
+      background: #ef4444;
+      color: white;
+      box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
     }
-    .active-card.visible {
+    .btn-stop:hover {
+      background: #dc2626;
+    }
+
+    /* Active Listening Card */
+    .listening-box {
+      display: none;
+      background: #131722;
+      border: 1px solid #222a3d;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+    .listening-box.active {
       display: block;
     }
-    .active-status {
+    .listening-header {
       display: flex;
       align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: #fafafa;
-      font-weight: 500;
-      margin-bottom: 4px;
+      justify-content: space-between;
+      margin-bottom: 6px;
     }
-    .active-sub {
-      font-size: 11px;
-      color: #71717a;
-      margin-bottom: 10px;
-      font-family: ui-monospace, SFMono-Regular, monospace;
+    .listening-target {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: #f8fafc;
+    }
+    
+    /* Live soundwave equalizer indicator */
+    .wave-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 2.5px;
+      height: 14px;
+    }
+    .wave-bar {
+      width: 2.5px;
+      height: 100%;
+      background: #3b82f6;
+      border-radius: 2px;
+      animation: wave 1.2s ease-in-out infinite;
+    }
+    .wave-bar:nth-child(1) { animation-delay: 0.0s; }
+    .wave-bar:nth-child(2) { animation-delay: 0.2s; }
+    .wave-bar:nth-child(3) { animation-delay: 0.4s; }
+    .wave-bar:nth-child(4) { animation-delay: 0.1s; }
+    @keyframes wave {
+      0%, 100% { height: 4px; }
+      50% { height: 14px; }
     }
 
+    .listening-subtext {
+      font-size: 11.5px;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+
+    /* Footer */
     .footer {
       display: flex;
       align-items: center;
       justify-content: space-between;
       margin-top: 14px;
-      padding-top: 10px;
-      border-top: 1px solid #1f2025;
+      padding-top: 12px;
+      border-top: 1px solid #1a1f2c;
       font-size: 11px;
     }
-    .footer-btn {
+    .footer-tag {
+      color: #475569;
+      font-weight: 500;
+    }
+    .footer-link {
       background: none;
       border: none;
-      color: #71717a;
+      color: #64748b;
+      font-size: 11.5px;
+      font-weight: 500;
       cursor: pointer;
-      font-size: 11px;
-      padding: 2px 0;
+      transition: color 0.15s;
     }
-    .footer-btn:hover {
-      color: #a1a1aa;
+    .footer-link:hover {
+      color: #94a3b8;
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <span class="app-title">Beckon</span>
-    <div class="status-badge">
-      <span id="status-dot" class="dot"></span>
-      <span id="status-text">engine offline</span>
+  <div class="top-bar">
+    <div class="brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 14.5c-2.49 0-4.5-2.01-4.5-4.5S9.51 7.5 12 7.5s4.5 2.01 4.5 4.5-2.01 4.5-4.5 4.5z"/></svg>
+      </div>
+      <span>Beckon</span>
+    </div>
+    <div class="status-pill">
+      <span id="status-dot" class="status-dot"></span>
+      <span id="status-text">Engine Ready</span>
     </div>
   </div>
 
-  <div id="offline-banner" class="warning-box">
-    Daemon not running on :8765.<br>
-    Start with: <code>python daemon/main.py</code>
+  <div id="offline-banner" class="offline-banner">
+    Engine is offline. Run <code>python daemon/main.py</code> in terminal to start.
   </div>
 
+  <!-- Idle Input View -->
   <div id="idle-view">
-    <label class="field-label" for="name-input">Keep an ear out for</label>
-    <input 
-      type="text" 
-      id="name-input" 
-      class="input-text" 
-      placeholder="e.g. Mayukh, Moyukh" 
-      value="Mayukh"
-      autofocus
-    />
-    <div class="input-help">Comma-separated names or keywords</div>
+    <div class="input-group">
+      <label class="input-label" for="name-input">Keep an ear out for</label>
+      <div class="input-wrap">
+        <input 
+          type="text" 
+          id="name-input" 
+          class="name-input" 
+          placeholder="e.g. Mayukh, Moyukh" 
+          value="Mayukh"
+          autofocus
+        />
+      </div>
+      <div class="input-hint">Enter your name or comma-separated aliases</div>
+    </div>
 
-    <button id="toggle-btn" class="btn btn-primary">Start Listening</button>
+    <button id="toggle-btn" class="btn-action btn-start">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+      <span>Start Listening</span>
+    </button>
   </div>
 
-  <div id="active-view" class="active-card">
-    <div class="active-status">
-      <span class="dot online"></span>
-      <span>Listening for <strong id="active-names-display">"Mayukh"</strong></span>
+  <!-- Active Listening View -->
+  <div id="active-view" class="listening-box">
+    <div class="listening-header">
+      <div class="listening-target">
+        Listening for <span id="active-names-display" style="color: #60a5fa;">"Mayukh"</span>
+      </div>
+      <div class="wave-bars">
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+        <div class="wave-bar"></div>
+      </div>
     </div>
-    <div class="active-sub">capturing tab audio</div>
-    <button id="stop-btn" class="btn btn-danger">Stop</button>
+    <div class="listening-subtext">Active on current tab audio</div>
+    <button id="stop-btn" class="btn-action btn-stop">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2"></rect></svg>
+      <span>Stop Listening</span>
+    </button>
   </div>
 
   <div class="footer">
-    <span style="color: #52525b; font-family: ui-monospace, monospace;">local · on-device</span>
-    <button id="settings-btn" class="footer-btn">Settings &amp; Test &rarr;</button>
+    <span class="footer-tag">🔒 On-device audio</span>
+    <button id="settings-btn" class="footer-link">Settings &amp; Test &rarr;</button>
   </div>
 
   <script src="popup.js"></script>

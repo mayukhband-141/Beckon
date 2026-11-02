@@ -63,12 +63,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   function setEngineStatus(online) {
     if (online) {
-      statusDot.className = "dot online";
-      statusText.textContent = "ready";
+      statusDot.className = "status-dot online";
+      statusText.textContent = "Engine Ready";
       offlineBanner.style.display = "none";
     } else {
-      statusDot.className = "dot";
-      statusText.textContent = "offline";
+      statusDot.className = "status-dot";
+      statusText.textContent = "Offline";
       offlineBanner.style.display = "block";
     }
   }
@@ -77,11 +77,11 @@ document.addEventListener("DOMContentLoaded", async () => {
     isCapturing = capturing;
     if (capturing) {
       idleView.style.display = "none";
-      activeView.className = "active-card visible";
+      activeView.className = "listening-box active";
       activeNamesDisplay.textContent = `"${namesString || nameInput.value}"`;
     } else {
       idleView.style.display = "block";
-      activeView.className = "active-card";
+      activeView.className = "listening-box";
     }
   }
 

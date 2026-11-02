@@ -76,6 +76,7 @@
     card.className = "beckon-card";
 
     const speaker = alertData.speaker || "Someone";
+    const firstLetter = (speaker[0] || "S").toUpperCase();
     const scorePct = Math.round((alertData.score || 0.8) * 100);
     const sentence = alertData.sentence || "Your name was called in the meeting.";
     const rollingTranscript = alertData.rolling_transcript || "";
@@ -83,6 +84,7 @@
     card.innerHTML = `
       <div class="beckon-header">
         <div class="beckon-title">
+          <span class="beckon-avatar">${escapeHtml(firstLetter)}</span>
           <span><strong>${escapeHtml(speaker)}</strong> called you</span>
           <span class="beckon-badge">${scorePct}% match</span>
         </div>
@@ -92,7 +94,7 @@
         "${escapeHtml(sentence)}"
       </div>
       ${rollingTranscript ? `
-        <button class="beckon-details-toggle">[+ last 45s context]</button>
+        <button class="beckon-details-toggle">▾ Last 45s context</button>
         <div class="beckon-transcript-box">${escapeHtml(rollingTranscript)}</div>
       ` : ""}
     `;
