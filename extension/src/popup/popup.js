@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (combinedNames.length > 0) {
       nameInput.value = combinedNames.join(", ");
     } else {
-      nameInput.value = "Mayukh";
+      nameInput.value = "Alex";
     }
 
     if (data.isListening) {
@@ -92,7 +92,7 @@ document.addEventListener("DOMContentLoaded", async () => {
       .filter(s => s.length > 0);
     
     if (list.length === 0) {
-      return { canonical: "Mayukh", aliases: [] };
+      return { canonical: "Alex", aliases: [] };
     }
     return {
       canonical: list[0],
@@ -101,7 +101,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   async function handleStart() {
-    const rawText = nameInput.value.trim() || "Mayukh";
+    const rawText = nameInput.value.trim() || "Alex";
     const { canonical, aliases } = parseNames(rawText);
 
     // Save and sync to engine

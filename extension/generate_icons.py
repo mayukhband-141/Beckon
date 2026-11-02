@@ -23,7 +23,7 @@ def create_png(width, height, color_rgb):
     )
     return png
 
-icons_dir = Path("c:/Users/MAYUKH/Downloads/MYDEN-proj/Beckon/extension/icons")
+icons_dir = Path(__file__).resolve().parent / "icons"
 icons_dir.mkdir(parents=True, exist_ok=True)
 
 # Indigo color: (99, 102, 241)

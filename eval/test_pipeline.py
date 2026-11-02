@@ -6,18 +6,18 @@ from daemon.match.matcher import NameMatcher
 
 def simulate_pipeline_matching():
     config = DaemonConfig()
-    config.name_profile.canonical_name = "Mayukh"
-    config.name_profile.aliases = ["Mayuk", "Moyukh", "Mayukha"]
+    config.name_profile.canonical_name = "Alex"
+    config.name_profile.aliases = ["Alec", "Aleks", "Alexander"]
     
     threshold = config.thresholds["balanced"]
     matcher = NameMatcher(config.name_profile.all_names, threshold=threshold)
 
     test_cases = [
-        ("Hey Mayukh, what are your thoughts on this design?", True, "Mayukh"),
-        ("I think Mayuk can take over the next slide.", True, "Mayuk"),
-        ("Moyukh, are you able to hear us clearly?", True, "Moyukh"),
+        ("Hey Alex, what are your thoughts on this design?", True, "Alex"),
+        ("I think Alec can take over the next slide.", True, "Alec"),
+        ("Aleks, are you able to hear us clearly?", True, "Aleks"),
         ("Let's proceed with the deployment schedule.", False, None),
-        ("We reviewed Mayukh's notes earlier today.", False, None), # Third-person below direct threshold or lower score
+        ("We reviewed Alex's notes earlier today.", False, None), # Third-person below direct threshold or lower score
     ]
 
     print(f"--- Running NameMatcher Test Suite for '{config.name_profile.canonical_name}' ---")

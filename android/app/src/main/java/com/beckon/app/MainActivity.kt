@@ -396,9 +396,9 @@ class MainActivity : AppCompatActivity() {
         tvPingResult.text = "pinging..."
         updateConnectionStatus(false)
 
-        val hostPort = prefs.serverIp.ifEmpty { "192.168.29.102:8765" }
+        val hostPort = prefs.serverIp.ifEmpty { "192.168.1.100:8765" }
         val parts = hostPort.split(":")
-        val host = parts.getOrElse(0) { "192.168.29.102" }
+        val host = parts.getOrElse(0) { "192.168.1.100" }
         val port = parts.getOrElse(1) { "8765" }.toIntOrNull() ?: 8765
 
         Thread {

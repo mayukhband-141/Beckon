@@ -1,11 +1,18 @@
+import os
 from dataclasses import dataclass, field
 from typing import List
 
 @dataclass
 class NameProfile:
-    canonical_name: str = "Mayukh"
-    aliases: List[str] = field(default_factory=lambda: ["Mayuk", "Moyukh", "Mayukhda", "Mayukha"])
-    sensitivity: str = "balanced"  # "strict", "balanced", "sensitive"
+    canonical_name: str = os.getenv("BECKON_TARGET_NAME", "Alex")
+    aliases: List[str] = field(
+        default_factory=lambda: [
+            a.strip()
+            for a in os.getenv("BECKON_ALIASES", "Alec, Alexander").split(",")
+            if a.strip()
+        ]
+    )
+    sensitivity: str = os.getenv("BECKON_SENSITIVITY", "balanced")  # "strict", "balanced", "sensitive"
 
     @property
     def all_names(self) -> List[str]:
@@ -14,9 +21,9 @@ class NameProfile:
 
 @dataclass
 class DaemonConfig:
-    host: str = "0.0.0.0"
-    port: int = 8765
-    auth_token: str = "beckon_dev_token_2026"
+    host: str = os.getenv("BECKON_HOST", "127.0.0.1")
+    port: int = int(os.getenv("BECKON_PORT", "8765"))
+    auth_token: str = os.getenv("BECKON_AUTH_TOKEN", "beckon_dev_token_2026")
     
     # Audio parameters
     sample_rate: int = 16000

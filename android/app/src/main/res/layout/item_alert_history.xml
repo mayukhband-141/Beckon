@@ -76,7 +76,7 @@
             android:paddingTop="10dp"
             android:paddingEnd="12dp"
             android:paddingBottom="10dp"
-            android:text="&quot;Could you check the slide, Mayukh?&quot;"
+            android:text="&quot;Could you check the slide, Alex?&quot;"
             android:textColor="@color/text_primary"
             android:textSize="12.5sp" />
 

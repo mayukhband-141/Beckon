@@ -95,6 +95,12 @@ logs/
 .env
 .env.local
 .env.*.local
+signing.properties
+google-services.json
+
+# Scratch & Dev experiments
+scratch/
+brain/
 
 # IDEs & OS files
 .vscode/

@@ -13,8 +13,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_TARGET_NAMES = "target_names"
         private const val KEY_AUDIO_SOURCE = "audio_source"
         private const val KEY_ALERTS_LOG = "alerts_log"
-        private const val DEFAULT_SERVER_IP = "192.168.29.102:8765"
-        private const val DEFAULT_NAMES = "Mayukh"
+        private const val DEFAULT_SERVER_IP = "192.168.1.100:8765"
+        private const val DEFAULT_NAMES = "Alex"
     }
 
     var serverIp: String

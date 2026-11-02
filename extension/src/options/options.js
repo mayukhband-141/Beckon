@@ -54,7 +54,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Save Settings
   saveBtn.addEventListener("click", () => {
-    const canonical_name = nameInput.value.trim() || "Mayukh";
+    const canonical_name = nameInput.value.trim() || "Alex";
     const aliases = aliasesInput.value
       .split(",")
       .map(s => s.trim())
@@ -226,7 +226,7 @@ document.addEventListener("DOMContentLoaded", () => {
       micToggleBtn.className = "btn btn-danger";
       micStatusText.textContent = "● Mic Active (Listening...)";
       micStatusText.style.color = "#22c55e";
-      liveTranscriptEl.textContent = "Listening... say your name (e.g. 'Hey Mayukh, what do you think?')";
+      liveTranscriptEl.textContent = "Listening... say your name (e.g. 'Hey Alex, what do you think?')";
 
       updateVUMeter();
 

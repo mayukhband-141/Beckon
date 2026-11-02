@@ -1,8 +1,8 @@
 <resources>
     <string name="app_name">Beckon</string>
     <string name="keep_an_ear_out">Keep an ear out for</string>
-    <string name="default_name">Mayukh</string>
-    <string name="name_hint">Name or aliases (e.g. Mayukh, Moyukh)</string>
+    <string name="default_name">Alex</string>
+    <string name="name_hint">Name or aliases (e.g. Alex, Alec)</string>
     <string name="tap_to_listen">Tap to Listen</string>
     <string name="listening_for">Listening for</string>
     <string name="stop_listening">Stop</string>

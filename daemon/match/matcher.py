@@ -55,7 +55,7 @@ class NameMatcher:
 
         has_question = "?" in text
 
-        # Test single words and 2-grams (for compound names or nicknames like "Mayukh da")
+        # Test single words and 2-grams (for compound names or nicknames like "Alex B")
         for i, word in enumerate(words_cleaned):
             if not word:
                 continue
@@ -107,7 +107,7 @@ class NameMatcher:
                     if has_question:
                         cue_boost += 0.05
 
-                    # Third-person penalty ("Mayukh's slide", "about Mayukh")
+                    # Third-person penalty ("Alex's slide", "about Alex")
                     if raw_words[word_indices[-1]].endswith("'s") or raw_words[word_indices[-1]].endswith("’s"):
                         cue_boost -= 0.12
 

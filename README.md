@@ -31,7 +31,7 @@ The Python daemon runs locally and processes audio in real time on CPU.
 
 ### Start the Daemon
 ```powershell
-python daemon\main.py --name "Mayukh" --aliases "Mayuk" "Moyukh" "Mayukha" --model "base" --sensitivity "balanced"
+python daemon\main.py --name "Alex" --aliases "Alec" "Alexander" --model "base" --sensitivity "balanced"
 ```
 
 The daemon will listen on `ws://127.0.0.1:8765`.
@@ -43,10 +43,7 @@ The daemon will listen on `ws://127.0.0.1:8765`.
 1. Open Google Chrome and navigate to `chrome://extensions/`.
 2. Toggle **Developer mode** ON (top right corner).
 3. Click **Load unpacked** (top left corner).
-4. Select the `extension/` folder inside this repository:
-   ```
-   C:\Users\MAYUKH\Downloads\MYDEN-proj\Beckon\extension
-   ```
+4. Select the `extension/` directory inside this repository.
 5. Click on the extension icon in Chrome:
    - Ensure the daemon indicator shows **Connected** (green dot).
    - Click **Settings & Enrollment** to adjust name variants or sensitivity.
@@ -57,7 +54,7 @@ The daemon will listen on `ws://127.0.0.1:8765`.
 
 1. Join any Google Meet call (`meet.google.com`).
 2. Click the Beckon extension icon in your toolbar and press **"Start Listening"**.
-3. When someone says: *"Hey Mayukh, what do you think?"*, Beckon will:
+3. When someone says: *"Hey Alex, what do you think?"*, Beckon will:
    - Trigger a floating in-meeting overlay banner at the top-right.
    - Display the active speaker's name.
    - Highlight the sentence just asked.

@@ -211,7 +211,7 @@
                 android:paddingTop="9dp"
                 android:paddingEnd="12dp"
                 android:paddingBottom="9dp"
-                android:text="Hey Mayukh, what are your thoughts on this?"
+                android:text="Hey Alex, what are your thoughts on this?"
                 android:textColor="@color/text_primary"
                 android:textSize="13sp" />
 

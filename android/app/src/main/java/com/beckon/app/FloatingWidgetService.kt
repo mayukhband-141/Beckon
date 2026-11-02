@@ -261,11 +261,11 @@ class FloatingWidgetService : Service() {
 
     private fun toggleListening() {
         isListening = !isListening
-        val namesText = etTargetNames.text.toString().trim().ifEmpty { "Mayukh" }
+        val namesText = etTargetNames.text.toString().trim().ifEmpty { "Alex" }
         prefs.targetNames = namesText
 
         val namesList = namesText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        val canonical = namesList.firstOrNull() ?: "Mayukh"
+        val canonical = namesList.firstOrNull() ?: "Alex"
 
         if (isListening) {
             AudioCaptureService.instance?.updateNames(canonical, namesList.drop(1))
