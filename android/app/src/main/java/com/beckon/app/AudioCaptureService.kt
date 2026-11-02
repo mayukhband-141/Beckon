@@ -105,7 +105,7 @@ class AudioCaptureService : Service() {
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Beckon is active")
             .setContentText("Listening for configured identifiers.")
-            .setSmallIcon(R.drawable.ic_beckon)
+            .setSmallIcon(R.drawable.ic_notification)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
