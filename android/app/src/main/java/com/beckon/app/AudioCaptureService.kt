@@ -1,5 +1,6 @@
 package com.beckon.app
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.Notification
 import android.app.NotificationChannel
@@ -59,30 +60,67 @@ class AudioCaptureService : Service() {
         instance = this
         prefs = PreferencesManager(this)
         ensureNotificationChannel()
-        safeStartForeground(null)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        when (intent?.action) {
-            ACTION_START -> {
-                val sourceType = intent.getStringExtra(EXTRA_SOURCE_TYPE) ?: SOURCE_MIC
-                val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                    intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
-                } else {
-                    @Suppress("DEPRECATION")
-                    intent.getParcelableExtra(EXTRA_RESULT_DATA)
-                }
-                val serverUrl = intent.getStringExtra(EXTRA_SERVER_URL) ?: ("ws://" + prefs.serverIp)
-                val names = intent.getStringArrayListExtra(EXTRA_NAMES) ?: arrayListOf(prefs.targetNames)
-
-                safeStartForeground(sourceType)
-                startAudioCapture(sourceType, resultData, serverUrl, names)
-            }
-            ACTION_STOP -> {
-                stopAudioCapture()
-                stopSelf()
-            }
+        if (intent == null || intent.action == ACTION_STOP) {
+            stopAudioCapture()
+            stopSelf()
+            return START_NOT_STICKY
         }
+
+        val sourceType = intent.getStringExtra(EXTRA_SOURCE_TYPE) ?: SOURCE_MIC
+        val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
+        } else {
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra(EXTRA_RESULT_DATA)
+        }
+
+        // Strict re-check of RECORD_AUDIO before starting microphone FGS on targetSdk 34
+        if (sourceType == SOURCE_MIC && ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            Log.e("AudioCaptureService", "RECORD_AUDIO not granted in onStartCommand — stopping service")
+            MainActivity.instance?.runOnUiThread {
+                MainActivity.instance?.onServiceError("Microphone permission was not granted.")
+            }
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        if (sourceType == SOURCE_INTERNAL && resultData == null) {
+            Log.e("AudioCaptureService", "MediaProjection result data missing — stopping service")
+            MainActivity.instance?.runOnUiThread {
+                MainActivity.instance?.onServiceError("Internal audio permission was declined.")
+            }
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        try {
+            val notif = buildNotification()
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                val fgsType = if (sourceType == SOURCE_INTERNAL) {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+                } else {
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+                }
+                startForeground(NOTIF_ID, notif, fgsType)
+            } else {
+                startForeground(NOTIF_ID, notif)
+            }
+        } catch (e: Exception) {
+            Log.e("AudioCaptureService", "startForeground failed: ${e.message}", e)
+            MainActivity.instance?.runOnUiThread {
+                MainActivity.instance?.onServiceError("Foreground service failed: ${e.message}")
+            }
+            stopSelf()
+            return START_NOT_STICKY
+        }
+
+        val serverUrl = intent.getStringExtra(EXTRA_SERVER_URL) ?: ("ws://" + prefs.serverIp)
+        val names = intent.getStringArrayListExtra(EXTRA_NAMES) ?: arrayListOf(prefs.targetNames)
+        startAudioCapture(sourceType, resultData, serverUrl, names)
+
         return START_NOT_STICKY
     }
 
@@ -109,28 +147,6 @@ class AudioCaptureService : Service() {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
-    }
-
-    private fun safeStartForeground(sourceType: String?) {
-        val notif = buildNotification()
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && sourceType != null) {
-                val type = if (sourceType == SOURCE_INTERNAL) {
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
-                } else {
-                    ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
-                }
-                try {
-                    startForeground(NOTIF_ID, notif, type)
-                    return
-                } catch (se: SecurityException) {
-                    Log.w("AudioCaptureService", "Could not start FGS with type $type, falling back to basic: ${se.message}")
-                }
-            }
-            startForeground(NOTIF_ID, notif)
-        } catch (e: Exception) {
-            Log.e("AudioCaptureService", "safeStartForeground failed", e)
-        }
     }
 
     @SuppressLint("MissingPermission")
@@ -192,12 +208,6 @@ class AudioCaptureService : Service() {
                     .setBufferSizeInBytes(bufferSize)
                     .build()
             } else {
-                // Check runtime permission before starting record
-                if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
-                    Log.e("AudioCaptureService", "RECORD_AUDIO permission missing at startAudioCapture")
-                    return
-                }
-
                 audioRecord = AudioRecord(
                     MediaRecorder.AudioSource.VOICE_RECOGNITION,
                     sampleRate,

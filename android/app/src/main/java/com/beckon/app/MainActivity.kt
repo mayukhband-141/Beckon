@@ -277,7 +277,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun onServiceError(message: String) {
+        isListening = false
+        syncButtonStates()
+        tvPingResult.text = "Error: $message"
+        Toast.makeText(this, message, Toast.LENGTH_LONG).show()
+    }
+
     private fun startAudioService(sourceType: String, mediaProjectionData: Intent?) {
+        if (sourceType == AudioCaptureService.SOURCE_MIC) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                onServiceError("Microphone permission required")
+                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                return
+            }
+        }
+
         val serverUrl = "ws://" + prefs.serverIp
         val namesList = prefs.targetNames.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
@@ -305,7 +320,7 @@ class MainActivity : AppCompatActivity() {
                 startFloatingService()
             }
         } catch (e: Exception) {
-            Toast.makeText(this, "Error starting service: ${e.message}", Toast.LENGTH_LONG).show()
+            onServiceError(e.message ?: "Failed to start listening service")
         }
     }
 

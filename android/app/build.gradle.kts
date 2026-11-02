@@ -10,9 +10,9 @@ android {
     defaultConfig {
         applicationId = "com.beckon.app"
         minSdk = 29 // Android 10+ required for AudioPlaybackCapture
-        targetSdk = 33
-        versionCode = 2
-        versionName = "0.1.1"
+        targetSdk = 34
+        versionCode = 3
+        versionName = "0.1.2"
     }
 
     buildTypes {
