@@ -88,13 +88,18 @@
           <span><strong>${escapeHtml(speaker)}</strong> called you</span>
           <span class="beckon-badge">${scorePct}% match</span>
         </div>
-        <button class="beckon-close-btn" title="Dismiss">&times;</button>
+        <button class="beckon-close-btn" title="Dismiss">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        </button>
       </div>
       <div class="beckon-sentence">
         "${escapeHtml(sentence)}"
       </div>
       ${rollingTranscript ? `
-        <button class="beckon-details-toggle">▾ Last 45s context</button>
+        <button class="beckon-details-toggle">
+          <svg class="beckon-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <span class="beckon-toggle-text">Last 45s context</span>
+        </button>
         <div class="beckon-transcript-box">${escapeHtml(rollingTranscript)}</div>
       ` : ""}
     `;
@@ -108,9 +113,11 @@
     const toggleBtn = card.querySelector(".beckon-details-toggle");
     if (toggleBtn) {
       const box = card.querySelector(".beckon-transcript-box");
+      const toggleText = toggleBtn.querySelector(".beckon-toggle-text");
       toggleBtn.addEventListener("click", () => {
         const isOpen = box.classList.toggle("open");
-        toggleBtn.textContent = isOpen ? "▴ Hide Context" : "▾ Last 45s Context";
+        toggleBtn.classList.toggle("open", isOpen);
+        toggleText.textContent = isOpen ? "Hide context" : "Last 45s context";
       });
     }
 

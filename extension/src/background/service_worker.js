@@ -85,7 +85,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       chrome.notifications?.create("beckon-alert-" + Date.now(), {
         type: "basic",
         iconUrl: chrome.runtime.getURL("icons/icon128.png"),
-        title: `⚡ ${message.alert.speaker || 'Someone'} called your name!`,
+        title: `${message.alert.speaker || 'Someone'} called your name!`,
         message: message.alert.sentence || "Someone just mentioned you in the meeting.",
         priority: 2,
         requireInteraction: true

@@ -114,8 +114,16 @@
   padding: 0;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   transition: color 0.15s;
+}
+
+.beckon-chevron {
+  transition: transform 0.2s ease;
+}
+
+.beckon-details-toggle.open .beckon-chevron {
+  transform: rotate(180deg);
 }
 
 .beckon-details-toggle:hover {

@@ -110,7 +110,7 @@ document.addEventListener("DOMContentLoaded", () => {
             matchStatusArea.style.display = "block";
             const scorePct = Math.round(msg.score * 100);
             matchBadge.className = "match-result-badge match-success";
-            matchBadge.textContent = `✓ Detected '${msg.name}' (${scorePct}% match)`;
+            matchBadge.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>Detected '${msg.name}' (${scorePct}% match)`;
 
             // Test chime if audio is enabled
             if (soundAlertCheckbox.checked) {
@@ -122,9 +122,9 @@ document.addEventListener("DOMContentLoaded", () => {
             simResult.style.display = "block";
             if (msg.matched) {
               const pct = Math.round(msg.score * 100);
-              simResult.innerHTML = `<span style="color:#4ade80;">✓ Match Detected!</span> Target: <strong>${msg.target_name}</strong> (Score: <strong>${pct}%</strong>, Cue Boost: +${msg.cue_boost})`;
+              simResult.innerHTML = `<span style="color:#4ade80;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>Match Detected!</span> Target: <strong>${msg.target_name}</strong> (Score: <strong>${pct}%</strong>, Cue Boost: +${msg.cue_boost})`;
             } else {
-              simResult.innerHTML = `<span style="color:#94a3b8;">✗ No Match</span> (Score below threshold for this sensitivity level).`;
+              simResult.innerHTML = `<span style="color:#94a3b8;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>No Match</span> (Score below threshold for this sensitivity level).`;
             }
           }
         }
