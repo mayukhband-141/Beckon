@@ -239,3 +239,4 @@ class FloatingWidgetService : Service() {
         super.onDestroy()
     }
 }
+
