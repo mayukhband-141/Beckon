@@ -55,9 +55,9 @@ class WhisperEngine:
 
         kwargs = {
             "language": language,
-            "beam_size": 1,
+            "beam_size": 2,
             "vad_filter": True,
-            "vad_parameters": dict(min_silence_duration_ms=300),
+            "vad_parameters": dict(min_silence_duration_ms=200),
             "word_timestamps": True,
             "condition_on_previous_text": False,
         }

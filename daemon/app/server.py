@@ -1,4 +1,5 @@
 import asyncio
+import http
 import json
 import logging
 from typing import Set, Optional
@@ -113,12 +114,19 @@ class BeckonServer:
                 self.current_audio_source = None
             self.connected_clients.discard(websocket)
 
+    def process_http_request(self, connection, request):
+        """Intercept HTTP health/ping probes cleanly without throwing WebSocket handshake errors."""
+        if request.path in ("/", "/ping", "/health"):
+            return connection.respond(http.HTTPStatus.OK, "OK\n")
+        return None
+
     async def start(self):
         logger.info(f"Starting Beckon Daemon on ws://{self.config.host}:{self.config.port}")
         server = await websockets.serve(
             self.handle_connection,
             self.config.host,
             self.config.port,
+            process_request=self.process_http_request,
             max_size=10 * 1024 * 1024  # 10MB max message size
         )
         pipeline_task = asyncio.create_task(self.pipeline.run_loop())

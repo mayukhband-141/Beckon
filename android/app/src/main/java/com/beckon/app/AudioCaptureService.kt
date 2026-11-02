@@ -278,7 +278,7 @@ class AudioCaptureService : Service() {
                     .build()
             } else {
                 audioRecord = AudioRecord(
-                    MediaRecorder.AudioSource.VOICE_RECOGNITION,
+                    MediaRecorder.AudioSource.MIC,
                     sampleRate,
                     channelConfig,
                     audioFormat,

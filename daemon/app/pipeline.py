@@ -2,6 +2,7 @@ import time
 import asyncio
 import logging
 from typing import Callable, Optional
+import numpy as np
 from daemon.app.config import DaemonConfig
 from daemon.app.ring_buffer import AudioRingBuffer
 from daemon.match.matcher import NameMatcher
@@ -40,6 +41,7 @@ class DetectionPipeline:
         
         self.is_running = False
         self.last_alert_time = 0.0
+        self.last_processed_sample = 0
         self.processed_texts = set()
 
     def update_name_profile(self, canonical_name: str, aliases: list, sensitivity: str):
@@ -65,24 +67,33 @@ class DetectionPipeline:
         while self.is_running:
             start_tick = time.time()
             try:
-                # 1. Check if we have received enough samples
-                if self.ring_buffer.total_samples_written >= int(self.config.sample_rate * 1.5):
+                current_total = self.ring_buffer.total_samples_written
+                new_samples = current_total - self.last_processed_sample
+                min_step_samples = int(self.config.sample_rate * 0.8)  # Require at least 800ms of new audio
+
+                # 1. Check if we have received enough samples and new audio has arrived
+                if current_total >= int(self.config.sample_rate * 1.5) and new_samples >= min_step_samples:
                     # Fetch sliding window (e.g. 5.0 seconds)
                     audio_window = self.ring_buffer.get_last_n_seconds(self.config.chunk_window_sec)
 
-                    # Build hotwords and initial prompt from enrolled names + roster
-                    names_str = " ".join(self.config.name_profile.all_names)
-                    roster = self.speaker_tracker.get_roster()
-                    initial_prompt = f"Meeting participants: {names_str}. " + (", ".join(roster) if roster else "")
+                    # Quick energy gate: skip heavy STT when room is quiet / silence
+                    energy = float(np.mean(np.abs(audio_window))) if len(audio_window) > 0 else 0.0
+                    if energy < 0.003:
+                        # Advance sample counter so silence doesn't accumulate
+                        self.last_processed_sample = current_total
+                    else:
+                        self.last_processed_sample = current_total
 
-                    # 2. Transcribe in threadpool so event loop is not blocked
-                    text, words = await asyncio.to_thread(
-                        self.whisper_engine.transcribe_audio_window,
-                        audio_window=audio_window,
-                        sample_rate=self.config.sample_rate,
-                        hotwords=names_str,
-                        initial_prompt=initial_prompt
-                    )
+                        # Build hotwords from enrolled names
+                        names_str = ", ".join(self.config.name_profile.all_names)
+
+                        # 2. Transcribe in threadpool so event loop is not blocked
+                        text, words = await asyncio.to_thread(
+                            self.whisper_engine.transcribe_audio_window,
+                            audio_window=audio_window,
+                            sample_rate=self.config.sample_rate,
+                            hotwords=names_str
+                        )
 
                     clean_text = text.strip()
                     if clean_text and clean_text not in self.processed_texts:
