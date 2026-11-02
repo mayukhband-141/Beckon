@@ -1,43 +1,43 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_dark"
-    android:fillViewport="true">
+    android:background="@color/bg_dark">
 
-    <LinearLayout
+    <!-- 1. Top Masthead Bar (Persistent) -->
+    <RelativeLayout
+        android:id="@+id/topBar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
+        android:layout_height="64dp"
+        android:layout_alignParentTop="true"
         android:paddingStart="20dp"
-        android:paddingTop="24dp"
-        android:paddingEnd="20dp"
-        android:paddingBottom="32dp">
+        android:paddingEnd="20dp">
 
-        <!-- Header -->
-        <RelativeLayout
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp">
+            android:layout_centerVertical="true"
+            android:gravity="center_vertical"
+            android:orientation="horizontal">
+
+            <ImageView
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_marginEnd="10dp"
+                android:contentDescription="Beckon logo"
+                android:src="@drawable/ic_beckon" />
 
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ImageView
-                    android:layout_width="32dp"
-                    android:layout_height="32dp"
-                    android:layout_marginEnd="10dp"
-                    android:contentDescription="Beckon logo"
-                    android:src="@drawable/ic_beckon" />
+                android:orientation="vertical">
 
                 <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:orientation="vertical">
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
 
                     <TextView
                         android:layout_width="wrap_content"
@@ -46,446 +46,758 @@
                         android:letterSpacing="-0.02"
                         android:text="Beckon"
                         android:textColor="@color/text_primary"
-                        android:textSize="20sp" />
+                        android:textSize="17sp" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:fontFamily="sans-serif"
-                        android:letterSpacing="0.04"
-                        android:text="ON-DEVICE LISTENER"
-                        android:textColor="@color/text_tertiary"
+                        android:layout_marginStart="6dp"
+                        android:fontFamily="monospace"
+                        android:text="DAEMON"
+                        android:textColor="@color/accent_green"
                         android:textSize="9.5sp"
                         android:textStyle="bold" />
                 </LinearLayout>
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:layout_centerVertical="true"
-                android:background="@drawable/bg_chip_pill"
-                android:gravity="center_vertical"
-                android:orientation="horizontal"
-                android:paddingStart="10dp"
-                android:paddingTop="5dp"
-                android:paddingEnd="12dp"
-                android:paddingBottom="5dp">
-
-                <View
-                    android:id="@+id/dotEngineStatus"
-                    android:layout_width="7dp"
-                    android:layout_height="7dp"
-                    android:background="@drawable/bg_dot_circle"
-                    android:backgroundTint="@color/accent_red" />
 
                 <TextView
-                    android:id="@+id/tvEngineStatus"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:layout_marginStart="6dp"
-                    android:fontFamily="monospace"
-                    android:letterSpacing="0.02"
-                    android:text="OFFLINE"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="11sp" />
+                    android:fontFamily="sans-serif"
+                    android:letterSpacing="0.04"
+                    android:text="ON-DEVICE LISTENER"
+                    android:textColor="@color/text_tertiary"
+                    android:textSize="9sp"
+                    android:textStyle="bold" />
             </LinearLayout>
-        </RelativeLayout>
+        </LinearLayout>
 
-        <!-- Primary Action Hero Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
+        <LinearLayout
+            android:id="@+id/badgeEngineStatus"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginBottom="18dp"
-            app:cardBackgroundColor="@color/bg_card"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/border_subtle"
-            app:strokeWidth="1dp">
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:background="@drawable/bg_chip_pill"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="9dp"
+            android:paddingTop="5dp"
+            android:paddingEnd="11dp"
+            android:paddingBottom="5dp">
+
+            <View
+                android:id="@+id/dotEngineStatus"
+                android:layout_width="7dp"
+                android:layout_height="7dp"
+                android:background="@drawable/bg_dot_circle"
+                android:backgroundTint="@color/accent_red" />
+
+            <TextView
+                android:id="@+id/tvEngineStatus"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="6dp"
+                android:fontFamily="monospace"
+                android:letterSpacing="0.02"
+                android:text="OFFLINE"
+                android:textColor="@color/text_secondary"
+                android:textSize="10.5sp" />
+        </LinearLayout>
+    </RelativeLayout>
+
+    <View
+        android:id="@+id/dividerTop"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_below="@+id/topBar"
+        android:background="@color/border_subtle" />
+
+    <!-- 2. Bottom Navigation Dock (Persistent) -->
+    <LinearLayout
+        android:id="@+id/bottomDock"
+        android:layout_width="match_parent"
+        android:layout_height="60dp"
+        android:layout_alignParentBottom="true"
+        android:background="#0C0D10"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <LinearLayout
+            android:id="@+id/tabListener"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/ivTabListener"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="Listener"
+                android:src="@drawable/ic_nav_listener"
+                app:tint="@color/accent_green" />
+
+            <TextView
+                android:id="@+id/tvTabListener"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="Listener"
+                android:textColor="@color/accent_green"
+                android:textSize="11sp" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:id="@+id/tabDaemon"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:background="?attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <ImageView
+                android:id="@+id/ivTabDaemon"
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:contentDescription="Daemon Config"
+                android:src="@drawable/ic_nav_daemon"
+                app:tint="@color/text_tertiary" />
+
+            <TextView
+                android:id="@+id/tvTabDaemon"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="3dp"
+                android:fontFamily="sans-serif-medium"
+                android:text="Daemon"
+                android:textColor="@color/text_tertiary"
+                android:textSize="11sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <View
+        android:id="@+id/dividerBottom"
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_above="@+id/bottomDock"
+        android:background="@color/border_subtle" />
+
+    <!-- 3. Page Container (Swappable between Listener and Daemon) -->
+    <FrameLayout
+        android:id="@+id/pageContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_above="@+id/dividerBottom"
+        android:layout_below="@+id/dividerTop">
+
+        <!-- ================= PAGE 1: LISTENER (MINIMALIST HOME) ================= -->
+        <ScrollView
+            android:id="@+id/pageListener"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:scrollbars="none"
+            android:visibility="visible">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="18dp">
+                android:paddingStart="16dp"
+                android:paddingTop="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="24dp">
 
-                <LinearLayout
+                <!-- Hero Acoustic Telemetry Card -->
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal">
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/bg_card"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/border_subtle"
+                    app:strokeWidth="1dp">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnStartListening"
-                        android:layout_width="0dp"
-                        android:layout_height="52dp"
-                        android:layout_marginEnd="6dp"
-                        android:layout_weight="1.2"
-                        android:backgroundTint="@color/accent_neutral"
-                        android:fontFamily="sans-serif-medium"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:text="Start Listening"
-                        android:textColor="#09090B"
-                        android:textSize="13sp"
-                        app:cornerRadius="10dp"
-                        app:icon="@drawable/ic_mic"
-                        app:iconGravity="textStart"
-                        app:iconPadding="8dp"
-                        app:iconSize="18dp"
-                        app:iconTint="#09090B" />
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnToggleFloating"
-                        android:layout_width="0dp"
-                        android:layout_height="52dp"
-                        android:layout_marginStart="6dp"
-                        android:layout_weight="1"
-                        android:backgroundTint="@color/bg_elevated"
-                        android:fontFamily="sans-serif-medium"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:text="Floating Pill"
-                        android:textColor="@color/text_primary"
-                        android:textSize="12.5sp"
-                        app:cornerRadius="10dp"
-                        app:strokeColor="@color/border_subtle"
-                        app:strokeWidth="1dp" />
-                </LinearLayout>
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
 
-        <!-- System Permissions Strip -->
-        <com.google.android.material.card.MaterialCardView
-            android:id="@+id/cardPermissions"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="@color/bg_card"
-            app:cardCornerRadius="14dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/border_subtle"
-            app:strokeWidth="1dp">
+                            <LinearLayout
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
+                                <View
+                                    android:id="@+id/dotAcousticActive"
+                                    android:layout_width="8dp"
+                                    android:layout_height="8dp"
+                                    android:background="@drawable/bg_dot_circle"
+                                    android:backgroundTint="@color/accent_green" />
 
+                                <TextView
+                                    android:layout_width="wrap_content"
+                                    android:layout_height="wrap_content"
+                                    android:layout_marginStart="8dp"
+                                    android:fontFamily="sans-serif-medium"
+                                    android:text="Active Acoustic Telemetry"
+                                    android:textColor="@color/text_primary"
+                                    android:textSize="13.5sp" />
+                            </LinearLayout>
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:fontFamily="monospace"
+                                android:text="PCM 16k · INT8"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="10sp" />
+                        </RelativeLayout>
+
+                        <!-- Telemetry Well -->
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:background="@drawable/bg_well_dark"
+                            android:paddingStart="14dp"
+                            android:paddingTop="12dp"
+                            android:paddingEnd="14dp"
+                            android:paddingBottom="12dp">
+
+                            <TextView
+                                android:id="@+id/tvBufferStats"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="monospace"
+                                android:text="BUFFER: 60s RING"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/tvDbfsStats"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:fontFamily="monospace"
+                                android:text="DBFS: -18.4 · NOMINAL"
+                                android:textColor="@color/accent_green"
+                                android:textSize="11sp" />
+
+                            <!-- Equalizer Visualizer Bars (Animated when listening) -->
+                            <LinearLayout
+                                android:id="@+id/llEqualizerBars"
+                                android:layout_width="wrap_content"
+                                android:layout_height="18dp"
+                                android:layout_below="@+id/tvBufferStats"
+                                android:layout_marginTop="10dp"
+                                android:gravity="bottom"
+                                android:orientation="horizontal"
+                                android:visibility="gone">
+
+                                <View
+                                    android:id="@+id/eqBar1"
+                                    android:layout_width="3dp"
+                                    android:layout_height="6dp"
+                                    android:layout_marginEnd="3dp"
+                                    android:background="@drawable/bg_chip_pill"
+                                    android:backgroundTint="@color/accent_green" />
+
+                                <View
+                                    android:id="@+id/eqBar2"
+                                    android:layout_width="3dp"
+                                    android:layout_height="12dp"
+                                    android:layout_marginEnd="3dp"
+                                    android:background="@drawable/bg_chip_pill"
+                                    android:backgroundTint="@color/accent_green" />
+
+                                <View
+                                    android:id="@+id/eqBar3"
+                                    android:layout_width="3dp"
+                                    android:layout_height="18dp"
+                                    android:layout_marginEnd="3dp"
+                                    android:background="@drawable/bg_chip_pill"
+                                    android:backgroundTint="@color/accent_green" />
+
+                                <View
+                                    android:id="@+id/eqBar4"
+                                    android:layout_width="3dp"
+                                    android:layout_height="8dp"
+                                    android:background="@drawable/bg_chip_pill"
+                                    android:backgroundTint="@color/accent_green" />
+                            </LinearLayout>
+                        </RelativeLayout>
+
+                        <!-- Action Controls Row -->
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="14dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnStartListening"
+                                android:layout_width="0dp"
+                                android:layout_height="50dp"
+                                android:layout_marginEnd="8dp"
+                                android:layout_weight="1"
+                                android:backgroundTint="@color/accent_neutral"
+                                android:fontFamily="sans-serif-medium"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:text="Start Monitoring"
+                                android:textColor="#09090B"
+                                android:textSize="13sp"
+                                app:cornerRadius="8dp"
+                                app:icon="@drawable/ic_nav_listener"
+                                app:iconGravity="textStart"
+                                app:iconPadding="8dp"
+                                app:iconSize="18dp"
+                                app:iconTint="#09090B" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnToggleFloating"
+                                android:layout_width="50dp"
+                                android:layout_height="50dp"
+                                android:backgroundTint="@color/bg_elevated"
+                                android:contentDescription="Toggle Floating Pill"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:padding="0dp"
+                                app:cornerRadius="8dp"
+                                app:icon="@drawable/ic_window_pill"
+                                app:iconGravity="textStart"
+                                app:iconPadding="0dp"
+                                app:iconSize="20dp"
+                                app:iconTint="@color/text_primary"
+                                app:strokeColor="@color/border_subtle"
+                                app:strokeWidth="1dp" />
+                        </LinearLayout>
+
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Target Call-signs Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/bg_card"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/border_subtle"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="Target Call-signs"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13.5sp" />
+
+                            <TextView
+                                android:id="@+id/tvActiveKeywordsCount"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:background="@drawable/bg_chip_tag"
+                                android:fontFamily="monospace"
+                                android:paddingStart="7dp"
+                                android:paddingTop="2dp"
+                                android:paddingEnd="7dp"
+                                android:paddingBottom="2dp"
+                                android:text="Active"
+                                android:textColor="@color/accent_green"
+                                android:textSize="10.5sp" />
+                        </RelativeLayout>
+
+                        <EditText
+                            android:id="@+id/etTargetNamesDashboard"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/bg_input_field"
+                            android:fontFamily="sans-serif"
+                            android:hint="Mayukh, Moyukh"
+                            android:importantForAutofill="no"
+                            android:inputType="textPersonName"
+                            android:paddingStart="12dp"
+                            android:paddingTop="9dp"
+                            android:paddingEnd="12dp"
+                            android:paddingBottom="9dp"
+                            android:text="Mayukh"
+                            android:textColor="@color/text_primary"
+                            android:textColorHint="@color/text_tertiary"
+                            android:textSize="13sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:fontFamily="sans-serif"
+                            android:text="ⓘ Phonetic matcher alerts when spoken in meeting"
+                            android:textColor="@color/text_tertiary"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- Recent Detections Section Header -->
                 <RelativeLayout
                     android:layout_width="match_parent"
-                    android:layout_height="wrap_content">
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="10dp">
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:fontFamily="sans-serif-medium"
-                        android:letterSpacing="-0.01"
-                        android:text="System Access"
+                        android:text="Recent Detections"
                         android:textColor="@color/text_primary"
-                        android:textSize="13sp" />
+                        android:textSize="13.5sp" />
 
                     <TextView
-                        android:id="@+id/tvGrantAllPermissions"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:layout_alignParentEnd="true"
-                        android:background="@drawable/bg_chip_pill"
-                        android:paddingStart="10dp"
-                        android:paddingTop="3dp"
-                        android:paddingEnd="10dp"
-                        android:paddingBottom="3dp"
-                        android:text="Grant All"
-                        android:textColor="@color/accent_green"
-                        android:textSize="11sp"
+                        android:fontFamily="monospace"
+                        android:text="LIVE FEED"
+                        android:textColor="@color/text_tertiary"
+                        android:textSize="10sp"
                         android:textStyle="bold" />
                 </RelativeLayout>
 
                 <LinearLayout
+                    android:id="@+id/llAlertsContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="12dp"
-                    android:orientation="horizontal">
+                    android:orientation="vertical" />
 
-                    <TextView
-                        android:id="@+id/tvPermNotifications"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:fontFamily="monospace"
-                        android:text="Notif: ..."
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp" />
-
-                    <TextView
-                        android:id="@+id/tvPermMic"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:fontFamily="monospace"
-                        android:text="Mic: ..."
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp" />
-
-                    <TextView
-                        android:id="@+id/tvPermOverlay"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:fontFamily="monospace"
-                        android:text="Overlay: ..."
-                        android:textColor="@color/text_secondary"
-                        android:textSize="11sp" />
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/btnMiuiPopups"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/bg_input_field"
-                    android:paddingStart="12dp"
-                    android:paddingTop="9dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="9dp"
-                    android:text="Xiaomi/HyperOS: Tap to allow background pop-up windows"
-                    android:textColor="@color/text_secondary"
-                    android:textSize="11sp" />
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </ScrollView>
 
-        <!-- Target Names Card -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- ================= PAGE 2: DAEMON CONFIG (TECHNICAL PAGE) ================= -->
+        <ScrollView
+            android:id="@+id/pageDaemon"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="@color/bg_card"
-            app:cardCornerRadius="14dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/border_subtle"
-            app:strokeWidth="1dp">
+            android:layout_height="match_parent"
+            android:fillViewport="true"
+            android:scrollbars="none"
+            android:visibility="gone">
 
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:padding="16dp">
+                android:paddingStart="16dp"
+                android:paddingTop="16dp"
+                android:paddingEnd="16dp"
+                android:paddingBottom="24dp">
 
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="-0.01"
-                    android:text="Target Names &amp; Keywords"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="Phonetic matcher alerts when any of these are spoken"
-                    android:textColor="@color/text_tertiary"
-                    android:textSize="11sp" />
-
-                <EditText
-                    android:id="@+id/etTargetNamesDashboard"
+                <!-- 1. Local Daemon Node Card -->
+                <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:background="@drawable/bg_input_field"
-                    android:hint="e.g. Mayukh, Moyukh"
-                    android:importantForAutofill="no"
-                    android:inputType="textPersonName"
-                    android:paddingStart="12dp"
-                    android:paddingTop="10dp"
-                    android:paddingEnd="12dp"
-                    android:paddingBottom="10dp"
-                    android:text="Mayukh"
-                    android:textColor="@color/text_primary"
-                    android:textColorHint="@color/text_tertiary"
-                    android:textSize="13.5sp" />
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/bg_card"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/border_subtle"
+                    app:strokeWidth="1dp">
 
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Engine Connection Card -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="16dp"
-            app:cardBackgroundColor="@color/bg_card"
-            app:cardCornerRadius="14dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/border_subtle"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="-0.01"
-                    android:text="Local Daemon Host"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp" />
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="2dp"
-                    android:text="PC WebSocket streaming address"
-                    android:textColor="@color/text_tertiary"
-                    android:textSize="11sp" />
-
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="10dp"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal">
-
-                    <EditText
-                        android:id="@+id/etServerIp"
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:background="@drawable/bg_input_field"
-                        android:fontFamily="monospace"
-                        android:importantForAutofill="no"
-                        android:inputType="textUri"
-                        android:paddingStart="12dp"
-                        android:paddingTop="10dp"
-                        android:paddingEnd="12dp"
-                        android:paddingBottom="10dp"
-                        android:text="192.168.29.102:8765"
-                        android:textColor="@color/text_primary"
-                        android:textSize="12.5sp" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btnTestPing"
-                        android:layout_width="wrap_content"
-                        android:layout_height="44dp"
-                        android:layout_marginStart="8dp"
-                        android:backgroundTint="@color/bg_elevated"
-                        android:fontFamily="sans-serif-medium"
-                        android:insetTop="0dp"
-                        android:insetBottom="0dp"
-                        android:text="Ping"
-                        android:textColor="@color/text_primary"
-                        android:textSize="12sp"
-                        app:cornerRadius="8dp"
-                        app:strokeColor="@color/border_subtle"
-                        app:strokeWidth="1dp" />
-                </LinearLayout>
-
-                <TextView
-                    android:id="@+id/tvPingResult"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp"
-                    android:fontFamily="monospace"
-                    android:text="Wi-Fi link to PC engine"
-                    android:textColor="@color/text_tertiary"
-                    android:textSize="11sp" />
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Audio Source Selector -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="24dp"
-            app:cardBackgroundColor="@color/bg_card"
-            app:cardCornerRadius="14dp"
-            app:cardElevation="0dp"
-            app:strokeColor="@color/border_subtle"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="16dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:fontFamily="sans-serif-medium"
-                    android:letterSpacing="-0.01"
-                    android:text="Audio Capture Mode"
-                    android:textColor="@color/text_primary"
-                    android:textSize="13sp" />
-
-                <RadioGroup
-                    android:id="@+id/rgAudioSource"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginTop="8dp">
-
-                    <RadioButton
-                        android:id="@+id/rbMic"
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:buttonTint="@color/accent_neutral"
-                        android:checked="true"
-                        android:paddingStart="4dp"
-                        android:text="Microphone / Voice input (Standard)"
-                        android:textColor="@color/text_primary"
-                        android:textSize="12.5sp" />
+                        android:orientation="vertical"
+                        android:padding="16dp">
 
-                    <RadioButton
-                        android:id="@+id/rbInternal"
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="Local Daemon Node"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13.5sp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:fontFamily="monospace"
+                                android:text="SOCKET READY"
+                                android:textColor="@color/accent_green"
+                                android:textSize="10sp" />
+                        </RelativeLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:gravity="center_vertical"
+                            android:orientation="horizontal">
+
+                            <EditText
+                                android:id="@+id/etServerIp"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:background="@drawable/bg_input_field"
+                                android:fontFamily="monospace"
+                                android:importantForAutofill="no"
+                                android:inputType="textUri"
+                                android:paddingStart="12dp"
+                                android:paddingTop="10dp"
+                                android:paddingEnd="12dp"
+                                android:paddingBottom="10dp"
+                                android:text="192.168.29.102:8765"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12.5sp" />
+
+                            <com.google.android.material.button.MaterialButton
+                                android:id="@+id/btnTestPing"
+                                android:layout_width="wrap_content"
+                                android:layout_height="44dp"
+                                android:layout_marginStart="8dp"
+                                android:backgroundTint="@color/bg_elevated"
+                                android:fontFamily="sans-serif-medium"
+                                android:insetTop="0dp"
+                                android:insetBottom="0dp"
+                                android:text="Ping"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12sp"
+                                app:cornerRadius="8dp"
+                                app:strokeColor="@color/border_subtle"
+                                app:strokeWidth="1dp" />
+                        </LinearLayout>
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp">
+
+                            <TextView
+                                android:id="@+id/tvPingResult"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="monospace"
+                                android:text="Wi-Fi link to PC engine"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:fontFamily="monospace"
+                                android:text="TCP · 8765"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="11sp" />
+                        </RelativeLayout>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- 2. Audio Capture Stream Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/bg_card"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/border_subtle"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:buttonTint="@color/accent_neutral"
-                        android:paddingStart="4dp"
-                        android:text="Internal Playback (MediaProjection loopback)"
-                        android:textColor="@color/text_secondary"
-                        android:textSize="12.5sp" />
-                </RadioGroup>
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="Audio Capture Stream"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13.5sp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:fontFamily="monospace"
+                                android:text="ROUTE_V2"
+                                android:textColor="@color/text_tertiary"
+                                android:textSize="10sp" />
+                        </RelativeLayout>
+
+                        <RadioGroup
+                            android:id="@+id/rgAudioSource"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp">
+
+                            <RadioButton
+                                android:id="@+id/rbMic"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:buttonTint="@color/accent_green"
+                                android:checked="true"
+                                android:paddingStart="6dp"
+                                android:text="Microphone (Room audio input)"
+                                android:textColor="@color/text_primary"
+                                android:textSize="12.5sp" />
+
+                            <RadioButton
+                                android:id="@+id/rbInternal"
+                                android:layout_width="match_parent"
+                                android:layout_height="wrap_content"
+                                android:buttonTint="@color/accent_green"
+                                android:paddingStart="6dp"
+                                android:text="Internal Playback (MediaProjection loopback)"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="12.5sp" />
+                        </RadioGroup>
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
+                <!-- 3. System Access / Permissions Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardPermissions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/bg_card"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/border_subtle"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="System Permissions"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13.5sp" />
+
+                            <TextView
+                                android:id="@+id/tvGrantAllPermissions"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:background="@drawable/bg_chip_pill"
+                                android:paddingStart="9dp"
+                                android:paddingTop="3dp"
+                                android:paddingEnd="9dp"
+                                android:paddingBottom="3dp"
+                                android:text="Grant All"
+                                android:textColor="@color/accent_green"
+                                android:textSize="11sp"
+                                android:textStyle="bold" />
+                        </RelativeLayout>
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:orientation="horizontal">
+
+                            <TextView
+                                android:id="@+id/tvPermNotifications"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:fontFamily="monospace"
+                                android:text="Notif: ..."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/tvPermMic"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:fontFamily="monospace"
+                                android:text="Mic: ..."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/tvPermOverlay"
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:fontFamily="monospace"
+                                android:text="Overlay: ..."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:id="@+id/btnMiuiPopups"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="12dp"
+                            android:background="@drawable/bg_input_field"
+                            android:paddingStart="12dp"
+                            android:paddingTop="9dp"
+                            android:paddingEnd="12dp"
+                            android:paddingBottom="9dp"
+                            android:text="Xiaomi/HyperOS: Tap to allow background pop-up windows"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
 
             </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+        </ScrollView>
 
-        <!-- Recent Alerts Log Header -->
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginBottom="12dp">
+    </FrameLayout>
 
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:fontFamily="sans-serif-medium"
-                android:letterSpacing="-0.01"
-                android:text="Recent Detections"
-                android:textColor="@color/text_secondary"
-                android:textSize="13sp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentEnd="true"
-                android:fontFamily="monospace"
-                android:text="LIVE FEED"
-                android:textColor="@color/text_tertiary"
-                android:textSize="10sp"
-                android:textStyle="bold" />
-        </RelativeLayout>
-
-        <LinearLayout
-            android:id="@+id/llAlertsContainer"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical" />
-
-    </LinearLayout>
-</ScrollView>
+</RelativeLayout>

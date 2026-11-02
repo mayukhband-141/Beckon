@@ -50,6 +50,24 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnStartListening: Button
     private lateinit var llAlertsContainer: LinearLayout
 
+    // Dual-page navigation views
+    private lateinit var pageListener: View
+    private lateinit var pageDaemon: View
+    private lateinit var tabListener: View
+    private lateinit var tabDaemon: View
+    private lateinit var ivTabListener: ImageView
+    private lateinit var tvTabListener: TextView
+    private lateinit var ivTabDaemon: ImageView
+    private lateinit var tvTabDaemon: TextView
+
+    // Soundwave equalizer animation views
+    private lateinit var llEqualizerBars: View
+    private lateinit var eqBar1: View
+    private lateinit var eqBar2: View
+    private lateinit var eqBar3: View
+    private lateinit var eqBar4: View
+    private var equalizerAnimator: android.animation.ValueAnimator? = null
+
     private var isListening = false
     private var isFloatingShown = false
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -151,6 +169,71 @@ class MainActivity : AppCompatActivity() {
         btnToggleFloating = findViewById(R.id.btnToggleFloating)
         btnStartListening = findViewById(R.id.btnStartListening)
         llAlertsContainer = findViewById(R.id.llAlertsContainer)
+
+        // Dual-page view bindings
+        pageListener = findViewById(R.id.pageListener)
+        pageDaemon = findViewById(R.id.pageDaemon)
+        tabListener = findViewById(R.id.tabListener)
+        tabDaemon = findViewById(R.id.tabDaemon)
+        ivTabListener = findViewById(R.id.ivTabListener)
+        tvTabListener = findViewById(R.id.tvTabListener)
+        ivTabDaemon = findViewById(R.id.ivTabDaemon)
+        tvTabDaemon = findViewById(R.id.tvTabDaemon)
+
+        // Soundwave animation view bindings
+        llEqualizerBars = findViewById(R.id.llEqualizerBars)
+        eqBar1 = findViewById(R.id.eqBar1)
+        eqBar2 = findViewById(R.id.eqBar2)
+        eqBar3 = findViewById(R.id.eqBar3)
+        eqBar4 = findViewById(R.id.eqBar4)
+    }
+
+    private fun switchTab(showListener: Boolean) {
+        val targetPage = if (showListener) pageListener else pageDaemon
+        val hidePage = if (showListener) pageDaemon else pageListener
+
+        if (targetPage.visibility == View.VISIBLE) return
+
+        targetPage.alpha = 0f
+        targetPage.visibility = View.VISIBLE
+        targetPage.animate().alpha(1f).setDuration(200).start()
+
+        hidePage.animate().alpha(0f).setDuration(160).withEndAction {
+            hidePage.visibility = View.GONE
+        }.start()
+
+        val activeColor = ContextCompat.getColor(this, R.color.accent_green)
+        val inactiveColor = ContextCompat.getColor(this, R.color.text_tertiary)
+
+        ivTabListener.setColorFilter(if (showListener) activeColor else inactiveColor)
+        tvTabListener.setTextColor(if (showListener) activeColor else inactiveColor)
+
+        ivTabDaemon.setColorFilter(if (!showListener) activeColor else inactiveColor)
+        tvTabDaemon.setTextColor(if (!showListener) activeColor else inactiveColor)
+    }
+
+    private fun startEqualizerAnimation() {
+        llEqualizerBars.visibility = View.VISIBLE
+        equalizerAnimator?.cancel()
+        equalizerAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 550
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            repeatMode = android.animation.ValueAnimator.REVERSE
+            addUpdateListener { animator ->
+                val fraction = animator.animatedValue as Float
+                eqBar1.scaleY = 0.35f + fraction * 0.9f
+                eqBar2.scaleY = 1.0f - fraction * 0.65f
+                eqBar3.scaleY = 0.45f + fraction * 0.85f
+                eqBar4.scaleY = 1.1f - fraction * 0.75f
+            }
+            start()
+        }
+    }
+
+    private fun stopEqualizerAnimation() {
+        equalizerAnimator?.cancel()
+        equalizerAnimator = null
+        llEqualizerBars.visibility = View.GONE
     }
 
     private fun loadPreferences() {
@@ -167,26 +250,28 @@ class MainActivity : AppCompatActivity() {
         if (btnStartListening is com.google.android.material.button.MaterialButton) {
             val mb = btnStartListening as com.google.android.material.button.MaterialButton
             if (isListening) {
-                mb.text = "Stop Listening"
+                mb.text = "Stop Monitoring"
                 mb.setIconResource(R.drawable.ic_stop)
                 mb.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_red)
                 mb.setTextColor(ContextCompat.getColor(this, R.color.text_primary))
                 mb.iconTint = ContextCompat.getColorStateList(this, R.color.text_primary)
+                startEqualizerAnimation()
             } else {
-                mb.text = "Start Listening"
-                mb.setIconResource(R.drawable.ic_mic)
+                mb.text = "Start Monitoring"
+                mb.setIconResource(R.drawable.ic_nav_listener)
                 mb.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_neutral)
                 mb.setTextColor(android.graphics.Color.parseColor("#09090B"))
                 mb.iconTint = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#09090B"))
+                stopEqualizerAnimation()
             }
         } else {
-            btnStartListening.text = if (isListening) "Stop Listening" else "Start Listening"
+            btnStartListening.text = if (isListening) "Stop Monitoring" else "Start Monitoring"
             btnStartListening.backgroundTintList = ContextCompat.getColorStateList(
                 this,
                 if (isListening) R.color.accent_red else R.color.accent_neutral
             )
+            if (isListening) startEqualizerAnimation() else stopEqualizerAnimation()
         }
-        btnToggleFloating.text = if (isFloatingShown) "Hide Floating Pill" else "Floating Pill"
     }
 
     private fun updatePermissionsUi() {
@@ -265,6 +350,9 @@ class MainActivity : AppCompatActivity() {
 
         rbMic.setOnCheckedChangeListener { _, isChecked -> if (isChecked) prefs.audioSource = "mic" }
         rbInternal.setOnCheckedChangeListener { _, isChecked -> if (isChecked) prefs.audioSource = "internal" }
+
+        tabListener.setOnClickListener { switchTab(showListener = true) }
+        tabDaemon.setOnClickListener { switchTab(showListener = false) }
 
         btnTestPing.setOnClickListener { pingDaemon() }
 
@@ -529,6 +617,7 @@ class MainActivity : AppCompatActivity() {
     private val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
+        stopEqualizerAnimation()
         instance = null
         super.onDestroy()
     }
