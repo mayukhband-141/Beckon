@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Beckon</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      width: 300px;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #111215;
+      color: #e4e4e7;
+      user-select: none;
+      -webkit-font-smoothing: antialiased;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .app-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: #a1a1aa;
+    }
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #71717a;
+    }
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #71717a;
+    }
+    .dot.online {
+      background: #10b981;
+    }
+
+    .warning-box {
+      display: none;
+      background: #1c1515;
+      border: 1px solid #3f2222;
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-size: 11px;
+      color: #f87171;
+      margin-bottom: 12px;
+      line-height: 1.4;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+
+    .field-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: #d4d4d8;
+      margin-bottom: 6px;
+    }
+    .input-text {
+      width: 100%;
+      padding: 9px 10px;
+      background: #18191e;
+      border: 1px solid #27272a;
+      border-radius: 5px;
+      color: #fafafa;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .input-text:focus {
+      border-color: #52525b;
+    }
+    .input-help {
+      font-size: 11px;
+      color: #71717a;
+      margin-top: 5px;
+      margin-bottom: 16px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 9px 12px;
+      border-radius: 5px;
+      border: 1px solid transparent;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-primary {
+      background: #fafafa;
+      color: #09090b;
+      border-color: #fafafa;
+    }
+    .btn-primary:hover {
+      background: #e4e4e7;
+    }
+    .btn-danger {
+      background: #271414;
+      color: #ef4444;
+      border-color: #451a1a;
+    }
+    .btn-danger:hover {
+      background: #361a1a;
+    }
+
+    .active-card {
+      display: none;
+      background: #18191e;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+    .active-card.visible {
+      display: block;
+    }
+    .active-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: #fafafa;
+      font-weight: 500;
+      margin-bottom: 4px;
+    }
+    .active-sub {
+      font-size: 11px;
+      color: #71717a;
+      margin-bottom: 10px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+
+    .footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 14px;
+      padding-top: 10px;
+      border-top: 1px solid #1f2025;
+      font-size: 11px;
+    }
+    .footer-btn {
+      background: none;
+      border: none;
+      color: #71717a;
+      cursor: pointer;
+      font-size: 11px;
+      padding: 2px 0;
+    }
+    .footer-btn:hover {
+      color: #a1a1aa;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <span class="app-title">Beckon</span>
+    <div class="status-badge">
+      <span id="status-dot" class="dot"></span>
+      <span id="status-text">engine offline</span>
+    </div>
+  </div>
+
+  <div id="offline-banner" class="warning-box">
+    Daemon not running on :8765.<br>
+    Start with: <code>python daemon/main.py</code>
+  </div>
+
+  <div id="idle-view">
+    <label class="field-label" for="name-input">Keep an ear out for</label>
+    <input 
+      type="text" 
+      id="name-input" 
+      class="input-text" 
+      placeholder="e.g. Mayukh, Moyukh" 
+      value="Mayukh"
+      autofocus
+    />
+    <div class="input-help">Comma-separated names or keywords</div>
+
+    <button id="toggle-btn" class="btn btn-primary">Start Listening</button>
+  </div>
+
+  <div id="active-view" class="active-card">
+    <div class="active-status">
+      <span class="dot online"></span>
+      <span>Listening for <strong id="active-names-display">"Mayukh"</strong></span>
+    </div>
+    <div class="active-sub">capturing tab audio</div>
+    <button id="stop-btn" class="btn btn-danger">Stop</button>
+  </div>
+
+  <div class="footer">
+    <span style="color: #52525b; font-family: ui-monospace, monospace;">local · on-device</span>
+    <button id="settings-btn" class="footer-btn">Settings &amp; Test &rarr;</button>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

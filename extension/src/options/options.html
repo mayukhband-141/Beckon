@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Beckon Configuration</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #0e0f12;
+      color: #e4e4e7;
+      margin: 0;
+      padding: 40px 20px;
+      display: flex;
+      justify-content: center;
+      -webkit-font-smoothing: antialiased;
+    }
+    .container {
+      width: 100%;
+      max-width: 540px;
+    }
+    h1 {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: -0.2px;
+      margin-bottom: 4px;
+      color: #fafafa;
+    }
+    .subtitle {
+      font-size: 12px;
+      color: #71717a;
+      margin-bottom: 24px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+    .panel {
+      background: #141519;
+      border: 1px solid #27272a;
+      border-radius: 6px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+    .panel-header {
+      font-size: 13px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      color: #f4f4f5;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .field {
+      margin-bottom: 14px;
+    }
+    .field:last-child {
+      margin-bottom: 0;
+    }
+    label {
+      display: block;
+      font-size: 11.5px;
+      font-weight: 500;
+      color: #a1a1aa;
+      margin-bottom: 6px;
+    }
+    input[type="text"], select {
+      width: 100%;
+      padding: 8px 10px;
+      background: #1a1b20;
+      border: 1px solid #27272a;
+      border-radius: 4px;
+      color: #fafafa;
+      font-size: 12.5px;
+      outline: none;
+    }
+    input[type="text"]:focus, select:focus {
+      border-color: #52525b;
+    }
+    .hint {
+      font-size: 11px;
+      color: #52525b;
+      margin-top: 4px;
+    }
+    .btn {
+      padding: 8px 14px;
+      border-radius: 4px;
+      border: 1px solid transparent;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+    .btn-primary {
+      background: #fafafa;
+      color: #09090b;
+      border-color: #fafafa;
+    }
+    .btn-primary:hover {
+      background: #e4e4e7;
+    }
+    .btn-secondary {
+      background: #1f2026;
+      border-color: #27272a;
+      color: #d4d4d8;
+    }
+    .btn-secondary:hover {
+      background: #272832;
+    }
+    .btn-danger {
+      background: #271414;
+      border-color: #451a1a;
+      color: #ef4444;
+    }
+    .btn-danger:hover {
+      background: #361a1a;
+    }
+    .status-saved {
+      margin-left: 12px;
+      font-size: 12px;
+      color: #10b981;
+      display: none;
+      font-family: ui-monospace, monospace;
+    }
+    .checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      cursor: pointer;
+    }
+    .checkbox-row input {
+      accent-color: #52525b;
+    }
+    .mic-box {
+      background: #0d0e11;
+      border: 1px solid #1f2025;
+      border-radius: 4px;
+      padding: 12px;
+      margin-top: 8px;
+    }
+    .meter-track {
+      width: 100%;
+      height: 4px;
+      background: #18191e;
+      border-radius: 2px;
+      margin: 8px 0;
+      overflow: hidden;
+    }
+    .meter-fill {
+      height: 100%;
+      width: 0%;
+      background: #52525b;
+      transition: width 0.05s linear;
+    }
+    .live-transcript-box {
+      min-height: 40px;
+      background: #141519;
+      border: 1px solid #1f2025;
+      border-radius: 4px;
+      padding: 8px 10px;
+      font-size: 12px;
+      color: #a1a1aa;
+      margin-top: 8px;
+      font-family: ui-monospace, SFMono-Regular, monospace;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Beckon Configuration</h1>
+    <div class="subtitle">engine: local ctranslate2 · faster-whisper</div>
+
+    <div class="panel">
+      <div class="panel-header">Name Profile</div>
+      
+      <div class="field">
+        <label for="canonical-name">Primary Identifier</label>
+        <input type="text" id="canonical-name" value="Mayukh">
+        <div class="hint">Biases the speech-to-text decoder.</div>
+      </div>
+
+      <div class="field">
+        <label for="aliases">Phonetic Variants &amp; Aliases</label>
+        <input type="text" id="aliases" value="Mayuk, Moyukh, Mayukha">
+        <div class="hint">Comma-separated alternative pronunciations or nicknames.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">Detection Tuning</div>
+      
+      <div class="field">
+        <label for="sensitivity">Sensitivity Threshold</label>
+        <select id="sensitivity">
+          <option value="strict">Strict (Fewest false alarms)</option>
+          <option value="balanced" selected>Balanced (Standard)</option>
+          <option value="sensitive">Sensitive (High recall)</option>
+        </select>
+      </div>
+
+      <div class="checkbox-row">
+        <input type="checkbox" id="sound-alert" checked>
+        <label for="sound-alert" style="margin: 0; color: #d4d4d8; cursor: pointer;">
+          Audible chime on match
+        </label>
+      </div>
+
+      <div class="field">
+        <label for="chime-volume">Volume (<span id="vol-label">40%</span>)</label>
+        <input type="range" id="chime-volume" min="0.05" max="1.0" step="0.05" value="0.4" style="width: 100%;">
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <span>Microphone Test</span>
+        <button id="mic-toggle-btn" class="btn btn-secondary">Start Mic Test</button>
+      </div>
+      
+      <div class="mic-box">
+        <div style="font-size: 11px; color: #71717a; display: flex; justify-content: space-between; font-family: ui-monospace, monospace;">
+          <span>input level</span>
+          <span id="mic-status-text">idle</span>
+        </div>
+        <div class="meter-track">
+          <div id="meter-bar" class="meter-fill"></div>
+        </div>
+
+        <div style="font-size: 11px; color: #71717a; margin-top: 6px;">Transcribed output:</div>
+        <div id="live-transcript" class="live-transcript-box">
+          <span style="color: #52525b;">Waiting for audio input...</span>
+        </div>
+
+        <div id="match-status-area" style="display: none; margin-top: 8px;">
+          <span id="match-badge" style="font-size: 11px; font-family: ui-monospace, monospace; color: #10b981;"></span>
+          <div id="alias-suggestion" style="margin-top: 6px; display: none;"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">Phrase Evaluation Simulator</div>
+      <div style="display: flex; gap: 8px; margin-top: 6px;">
+        <input type="text" id="sim-input" placeholder="e.g. Mayukh, can you take this?">
+        <button id="sim-btn" class="btn btn-secondary" style="white-space: nowrap;">Evaluate</button>
+      </div>
+      <div id="sim-result" style="margin-top: 8px; font-size: 11.5px; color: #a1a1aa; font-family: ui-monospace, monospace; display: none;"></div>
+    </div>
+
+    <div style="display: flex; align-items: center; margin-top: 8px;">
+      <button id="save-btn" class="btn btn-primary">Save Settings</button>
+      <span id="status-msg" class="status-saved">saved</span>
+    </div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
