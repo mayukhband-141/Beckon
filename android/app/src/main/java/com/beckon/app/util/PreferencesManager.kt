@@ -57,3 +57,4 @@ class PreferencesManager(context: Context) {
         return results
     }
 }
+
