@@ -37,7 +37,7 @@
                     android:id="@+id/dotEngineStatus"
                     android:layout_width="7dp"
                     android:layout_height="7dp"
-                    android:background="@drawable/bg_shazam_button"
+                    android:background="@drawable/bg_dot_circle"
                     android:backgroundTint="@color/accent_red" />
 
                 <TextView
@@ -272,18 +272,8 @@
             android:id="@+id/llAlertsContainer"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical">
+            android:orientation="vertical" />
 
-            <TextView
-                android:id="@+id/tvNoAlerts"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:background="@color/bg_card"
-                android:padding="16dp"
-                android:text="No detections yet."
-                android:textColor="@color/text_tertiary"
-                android:textSize="12sp" />
-        </LinearLayout>
 
     </LinearLayout>
 </ScrollView>

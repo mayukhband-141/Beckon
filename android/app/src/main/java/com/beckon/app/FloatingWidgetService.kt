@@ -25,6 +25,7 @@ class FloatingWidgetService : Service() {
 
     private lateinit var windowManager: WindowManager
     private lateinit var floatingView: View
+    private lateinit var params: WindowManager.LayoutParams
 
     private lateinit var viewCollapsed: View
     private lateinit var viewExpanded: View
@@ -57,15 +58,21 @@ class FloatingWidgetService : Service() {
         super.onCreate()
         instance = this
         prefs = PreferencesManager(this)
-        windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
-            Log.e("FloatingWidget", "Overlay permission not granted, stopping service")
+            Log.e("FloatingWidget", "Overlay permission not granted — stopping service")
             stopSelf()
             return
         }
 
-        initFloatingView()
+        windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        try {
+            initFloatingView()
+            Log.d("FloatingWidget", "Floating widget added to WindowManager successfully")
+        } catch (e: Exception) {
+            Log.e("FloatingWidget", "Failed to init floating view", e)
+            stopSelf()
+        }
     }
 
     @SuppressLint("InflateParams", "ClickableViewAccessibility")
@@ -88,7 +95,6 @@ class FloatingWidgetService : Service() {
         btnDismissAlert = floatingView.findViewById(R.id.btnDismissAlert)
         btnCloseExpanded = floatingView.findViewById(R.id.btnCloseExpanded)
 
-        // Preload saved target names
         etTargetNames.setText(prefs.targetNames)
 
         val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -98,42 +104,47 @@ class FloatingWidgetService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        // Docked on the right-hand edge by default, fully visible
-        val params = WindowManager.LayoutParams(
+        // Position: right edge, vertically centered at 40% from top
+        // Using Gravity.TOP | Gravity.END so Y offset is measured from the top of screen
+        // x=0 = flush with right edge (for Gravity.END, x is offset from right)
+        params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             layoutFlag,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.CENTER_VERTICAL or Gravity.END
-            x = 16
-            y = 0
+            gravity = Gravity.TOP or Gravity.END
+            x = 0
+            y = 300
         }
 
         windowManager.addView(floatingView, params)
+        setupDragBehavior()
+        setupClickListeners()
+    }
 
-        setupDragBehavior(params)
-
+    private fun setupClickListeners() {
         viewCollapsed.setOnClickListener {
-            expandWidget(params)
+            expandWidget()
         }
 
         btnCloseExpanded.setOnClickListener {
-            collapseWidget(params)
+            collapseWidget()
         }
 
         btnDismissAlert.setOnClickListener {
-            dismissAlert(params)
+            dismissAlert()
         }
 
         btnShazamListen.setOnClickListener {
-            toggleListening(params)
+            toggleListening()
         }
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun setupDragBehavior(params: WindowManager.LayoutParams) {
+    private fun setupDragBehavior() {
         var initialX = 0
         var initialY = 0
         var initialTouchX = 0f
@@ -149,9 +160,9 @@ class FloatingWidgetService : Service() {
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    // For Gravity.END, moving left increases x
-                    params.x = initialX - (event.rawX - initialTouchX).toInt()
-                    params.y = initialY + (event.rawY - initialTouchY).toInt()
+                    // Gravity.END: x increases moving toward left; invert horizontal delta
+                    params.x = (initialX - (event.rawX - initialTouchX)).toInt().coerceAtLeast(0)
+                    params.y = (initialY + (event.rawY - initialTouchY)).toInt().coerceAtLeast(0)
                     windowManager.updateViewLayout(floatingView, params)
                     true
                 }
@@ -168,9 +179,9 @@ class FloatingWidgetService : Service() {
         }
     }
 
-    private fun expandWidget(params: WindowManager.LayoutParams) {
-        // Enable keyboard and touch focus when expanded
-        params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+    private fun expandWidget() {
+        params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
         windowManager.updateViewLayout(floatingView, params)
 
         etTargetNames.setText(prefs.targetNames)
@@ -179,9 +190,9 @@ class FloatingWidgetService : Service() {
         viewExpanded.visibility = View.VISIBLE
     }
 
-    private fun collapseWidget(params: WindowManager.LayoutParams) {
-        // Revert to non-focusable floating mode
-        params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+    private fun collapseWidget() {
+        params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
         windowManager.updateViewLayout(floatingView, params)
 
         viewExpanded.visibility = View.GONE
@@ -189,7 +200,7 @@ class FloatingWidgetService : Service() {
         viewCollapsed.visibility = View.VISIBLE
     }
 
-    private fun toggleListening(params: WindowManager.LayoutParams) {
+    private fun toggleListening() {
         isListening = !isListening
         val namesText = etTargetNames.text.toString().trim().ifEmpty { "Mayukh" }
         prefs.targetNames = namesText
@@ -199,36 +210,36 @@ class FloatingWidgetService : Service() {
 
         if (isListening) {
             AudioCaptureService.instance?.updateNames(canonical, namesList.drop(1))
-            tvCollapsedStatus.text = "Listening · $canonical"
+            tvCollapsedStatus.text = "Listening — $canonical"
             dotActive.visibility = View.VISIBLE
             ivShazamIcon.setImageResource(R.drawable.ic_stop)
             tvShazamActionText.text = "Tap to Stop"
-
-            collapseWidget(params)
         } else {
             tvCollapsedStatus.text = "Beckon"
             dotActive.visibility = View.GONE
             ivShazamIcon.setImageResource(R.drawable.ic_mic)
             tvShazamActionText.text = "Tap to Listen"
-
-            collapseWidget(params)
         }
+
+        collapseWidget()
     }
 
     fun updateNamesFromDashboard(names: String) {
         prefs.targetNames = names
         if (::etTargetNames.isInitialized) {
-            etTargetNames.setText(names)
+            mainHandler.post { etTargetNames.setText(names) }
         }
     }
 
-    fun showAlert(speaker: String, sentence: String, score: Double) {
+    fun showAlert(speaker: String, sentence: String, @Suppress("UNUSED_PARAMETER") score: Double) {
         mainHandler.post {
             ChimePlayer.playChime()
             HapticFeedback.triggerAlertVibration(this)
 
-            val params = floatingView.layoutParams as WindowManager.LayoutParams
-            params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            if (!::floatingView.isInitialized) return@post
+
+            params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
+                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
             windowManager.updateViewLayout(floatingView, params)
 
             tvAlertSpeaker.text = "$speaker called you"
@@ -239,24 +250,23 @@ class FloatingWidgetService : Service() {
             viewAlert.visibility = View.VISIBLE
 
             mainHandler.removeCallbacksAndMessages(null)
-            mainHandler.postDelayed({
-                dismissAlert(params)
-            }, 10000)
+            mainHandler.postDelayed({ dismissAlert() }, 10_000)
         }
     }
 
-    private fun dismissAlert(params: WindowManager.LayoutParams) {
+    private fun dismissAlert() {
         viewAlert.visibility = View.GONE
         viewExpanded.visibility = View.GONE
         viewCollapsed.visibility = View.VISIBLE
-        windowManager.updateViewLayout(floatingView, params)
+        if (::floatingView.isInitialized) {
+            try { windowManager.updateViewLayout(floatingView, params) } catch (_: Exception) {}
+        }
     }
 
     override fun onDestroy() {
+        mainHandler.removeCallbacksAndMessages(null)
         if (::floatingView.isInitialized) {
-            try {
-                windowManager.removeView(floatingView)
-            } catch (_: Exception) {}
+            try { windowManager.removeView(floatingView) } catch (_: Exception) {}
         }
         instance = null
         super.onDestroy()

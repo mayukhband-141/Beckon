@@ -141,10 +141,10 @@
         android:layout_width="300dp"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        app:cardBackgroundColor="#1A2030"
+        app:cardBackgroundColor="@color/bg_card"
         app:cardCornerRadius="14dp"
         app:cardElevation="16dp"
-        app:strokeColor="@color/accent_blue"
+        app:strokeColor="@color/border_active"
         app:strokeWidth="1.5dp">
 
         <LinearLayout
@@ -162,7 +162,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Someone called you!"
-                    android:textColor="@color/accent_blue_light"
+                    android:textColor="@color/accent_green"
                     android:textSize="13sp"
                     android:textStyle="bold" />
 
@@ -181,7 +181,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="8dp"
-                android:background="#121622"
+                android:background="@color/bg_elevated"
                 android:padding="8dp"
                 android:text="Hey Mayukh, what are your thoughts on this?"
                 android:textColor="@color/text_primary"

@@ -7,6 +7,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.ServiceInfo
 import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioPlaybackCaptureConfiguration
@@ -34,13 +35,16 @@ class AudioCaptureService : Service() {
     companion object {
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
-        const val EXTRA_SOURCE_TYPE = "EXTRA_SOURCE_TYPE" // "mic" or "internal"
+        const val EXTRA_SOURCE_TYPE = "EXTRA_SOURCE_TYPE"
         const val EXTRA_RESULT_DATA = "EXTRA_RESULT_DATA"
         const val EXTRA_SERVER_URL = "EXTRA_SERVER_URL"
         const val EXTRA_NAMES = "EXTRA_NAMES"
 
         const val SOURCE_MIC = "mic"
         const val SOURCE_INTERNAL = "internal"
+
+        private const val CHANNEL_ID = "beckon_audio_channel"
+        private const val NOTIF_ID = 101
 
         var instance: AudioCaptureService? = null
             private set
@@ -52,16 +56,29 @@ class AudioCaptureService : Service() {
         super.onCreate()
         instance = this
         prefs = PreferencesManager(this)
-        startForegroundNotification()
+        ensureNotificationChannel()
+        // Start foreground immediately with microphone type (the safe default).
+        // If internal audio is selected, we re-promote with mediaProjection type later.
+        startForegroundCompat(SOURCE_MIC)
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
                 val sourceType = intent.getStringExtra(EXTRA_SOURCE_TYPE) ?: SOURCE_MIC
-                val resultData = intent.getParcelableExtra<Intent>(EXTRA_RESULT_DATA)
+                val resultData = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA, Intent::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra(EXTRA_RESULT_DATA)
+                }
                 val serverUrl = intent.getStringExtra(EXTRA_SERVER_URL) ?: ("ws://" + prefs.serverIp)
                 val names = intent.getStringArrayListExtra(EXTRA_NAMES) ?: arrayListOf(prefs.targetNames)
+
+                // Re-promote foreground service type for internal audio (requires mediaProjection type)
+                if (sourceType == SOURCE_INTERNAL) {
+                    startForegroundCompat(SOURCE_INTERNAL)
+                }
 
                 startAudioCapture(sourceType, resultData, serverUrl, names)
             }
@@ -73,27 +90,39 @@ class AudioCaptureService : Service() {
         return START_NOT_STICKY
     }
 
-    private fun startForegroundNotification() {
-        val channelId = "beckon_audio_channel"
+    private fun ensureNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
-                channelId,
+                CHANNEL_ID,
                 "Beckon Listening Service",
                 NotificationManager.IMPORTANCE_LOW
             )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+            getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
         }
+    }
 
-        val notification: Notification = NotificationCompat.Builder(this, channelId)
+    private fun buildNotification(): Notification {
+        return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Beckon is active")
             .setContentText("Listening for configured identifiers.")
             .setSmallIcon(R.drawable.ic_beckon)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
+    }
 
-        startForeground(101, notification)
+    private fun startForegroundCompat(sourceType: String) {
+        val notif = buildNotification()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            val serviceType = if (sourceType == SOURCE_INTERNAL) {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+            } else {
+                ServiceInfo.FOREGROUND_SERVICE_TYPE_MICROPHONE
+            }
+            startForeground(NOTIF_ID, notif, serviceType)
+        } else {
+            startForeground(NOTIF_ID, notif)
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -105,7 +134,6 @@ class AudioCaptureService : Service() {
     ) {
         if (isRecording.get()) return
 
-        // 1. Establish WebSocket stream to local daemon
         streamer = AudioStreamer(
             serverUrl = serverUrl,
             onAlertReceived = { speaker, sentence, score ->
@@ -126,11 +154,14 @@ class AudioCaptureService : Service() {
         val channelConfig = AudioFormat.CHANNEL_IN_MONO
         val audioFormat = AudioFormat.ENCODING_PCM_16BIT
         val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+        if (minBufferSize == AudioRecord.ERROR_BAD_VALUE || minBufferSize == AudioRecord.ERROR) {
+            Log.e("AudioCaptureService", "Invalid buffer size, aborting AudioRecord init")
+            return
+        }
         val bufferSize = minBufferSize.coerceAtLeast(sampleRate * 2)
 
         try {
-            if (sourceType == SOURCE_INTERNAL && resultData != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                // Internal audio loopback via MediaProjection
+            audioRecord = if (sourceType == SOURCE_INTERNAL && resultData != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                 val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
                 mediaProjection = projectionManager.getMediaProjection(android.app.Activity.RESULT_OK, resultData)
 
@@ -140,7 +171,7 @@ class AudioCaptureService : Service() {
                     .addMatchingUsage(AudioAttributes.USAGE_GAME)
                     .build()
 
-                audioRecord = AudioRecord.Builder()
+                AudioRecord.Builder()
                     .setAudioPlaybackCaptureConfig(config)
                     .setAudioFormat(
                         AudioFormat.Builder()
@@ -152,8 +183,8 @@ class AudioCaptureService : Service() {
                     .setBufferSizeInBytes(bufferSize)
                     .build()
             } else {
-                // Default & trusted: Voice recognition mic input (NO screen capture permission needed)
-                audioRecord = AudioRecord(
+                // Mic mode — safe, only needs RECORD_AUDIO
+                AudioRecord(
                     MediaRecorder.AudioSource.VOICE_RECOGNITION,
                     sampleRate,
                     channelConfig,
@@ -162,22 +193,29 @@ class AudioCaptureService : Service() {
                 )
             }
 
+            if (audioRecord?.state != AudioRecord.STATE_INITIALIZED) {
+                Log.e("AudioCaptureService", "AudioRecord failed to initialize (state=${audioRecord?.state})")
+                audioRecord?.release()
+                audioRecord = null
+                return
+            }
+
             audioRecord?.startRecording()
             isRecording.set(true)
 
             recordingThread = Thread {
-                val buffer = ByteArray(1600 * 2) // 100ms frames
+                val buffer = ByteArray(1600 * 2) // 100 ms frames at 16kHz
                 while (isRecording.get()) {
                     val read = audioRecord?.read(buffer, 0, buffer.size) ?: -1
                     if (read > 0) {
                         streamer?.sendAudioChunk(buffer, 0, read)
                     }
                 }
-            }.apply { start() }
+            }.also { it.start() }
 
-            Log.d("AudioCaptureService", "Audio capture successfully active using source: $sourceType")
+            Log.d("AudioCaptureService", "Audio capture started: source=$sourceType bufferSize=$bufferSize")
         } catch (e: Exception) {
-            Log.e("AudioCaptureService", "Failed to initialize AudioRecord", e)
+            Log.e("AudioCaptureService", "AudioRecord init exception", e)
             stopAudioCapture()
         }
     }
@@ -192,15 +230,11 @@ class AudioCaptureService : Service() {
         recordingThread?.interrupt()
         recordingThread = null
 
-        try {
-            audioRecord?.stop()
-            audioRecord?.release()
-        } catch (_: Exception) {}
+        try { audioRecord?.stop() } catch (_: Exception) {}
+        try { audioRecord?.release() } catch (_: Exception) {}
         audioRecord = null
 
-        try {
-            mediaProjection?.stop()
-        } catch (_: Exception) {}
+        try { mediaProjection?.stop() } catch (_: Exception) {}
         mediaProjection = null
 
         streamer?.disconnect()

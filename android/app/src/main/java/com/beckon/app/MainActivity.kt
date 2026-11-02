@@ -21,13 +21,8 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.beckon.app.util.PreferencesManager
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import okhttp3.Response
-import okhttp3.WebSocket
-import okhttp3.WebSocketListener
-import org.json.JSONObject
-import java.util.concurrent.TimeUnit
+import java.net.InetSocketAddress
+import java.net.Socket
 
 class MainActivity : AppCompatActivity() {
 
@@ -45,7 +40,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnToggleFloating: Button
     private lateinit var btnStartListening: Button
     private lateinit var llAlertsContainer: LinearLayout
-    private lateinit var tvNoAlerts: TextView
 
     private var isListening = false
     private var isFloatingShown = false
@@ -96,7 +90,15 @@ class MainActivity : AppCompatActivity() {
         loadPreferences()
         setupListeners()
         refreshAlerts()
-        testDaemonPing()
+        pingDaemon()
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Restore UI state from running services (handles app kill + reopen)
+        isListening = AudioCaptureService.instance != null
+        isFloatingShown = FloatingWidgetService.instance != null
+        syncButtonStates()
     }
 
     private fun initViews() {
@@ -112,7 +114,6 @@ class MainActivity : AppCompatActivity() {
         btnToggleFloating = findViewById(R.id.btnToggleFloating)
         btnStartListening = findViewById(R.id.btnStartListening)
         llAlertsContainer = findViewById(R.id.llAlertsContainer)
-        tvNoAlerts = findViewById(R.id.tvNoAlerts)
     }
 
     private fun loadPreferences() {
@@ -125,11 +126,20 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun syncButtonStates() {
+        if (isListening) {
+            btnStartListening.text = "Stop Listening"
+            btnStartListening.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_red)
+        } else {
+            btnStartListening.text = "Start Listening"
+            btnStartListening.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_neutral)
+        }
+        btnToggleFloating.text = if (isFloatingShown) "Hide Floating Pill" else "Show Floating Pill"
+    }
+
     private fun setupListeners() {
         etServerIp.addTextChangedListener(object : TextWatcher {
-            override fun afterTextChanged(s: Editable?) {
-                prefs.serverIp = s.toString().trim()
-            }
+            override fun afterTextChanged(s: Editable?) { prefs.serverIp = s.toString().trim() }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
@@ -144,62 +154,48 @@ class MainActivity : AppCompatActivity() {
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })
 
-        rbMic.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) prefs.audioSource = "mic"
-        }
-        rbInternal.setOnCheckedChangeListener { _, isChecked ->
-            if (isChecked) prefs.audioSource = "internal"
-        }
+        rbMic.setOnCheckedChangeListener { _, isChecked -> if (isChecked) prefs.audioSource = "mic" }
+        rbInternal.setOnCheckedChangeListener { _, isChecked -> if (isChecked) prefs.audioSource = "internal" }
 
-        btnTestPing.setOnClickListener {
-            testDaemonPing()
-        }
+        btnTestPing.setOnClickListener { pingDaemon() }
 
         btnToggleFloating.setOnClickListener {
             if (!isFloatingShown) {
-                if (!checkOverlayPermission()) {
-                    requestOverlayPermission()
-                } else {
-                    startFloatingService()
-                }
+                if (!checkOverlayPermission()) requestOverlayPermission() else startFloatingService()
             } else {
                 stopFloatingService()
             }
         }
 
         btnStartListening.setOnClickListener {
-            if (!isListening) {
-                initiateListening()
-            } else {
-                stopListening()
-            }
+            if (!isListening) initiateListening() else stopListening()
         }
     }
 
-    private fun testDaemonPing() {
+    // --- Ping via raw TCP socket (reliable; no WebSocket handshake overhead) ---
+    private fun pingDaemon() {
         tvPingResult.text = "pinging..."
-        val host = prefs.serverIp.ifEmpty { "192.168.29.102:8765" }
-        val url = if (host.startsWith("ws://")) host else "ws://$host"
+        updateConnectionStatus(false)
 
-        val client = OkHttpClient.Builder().connectTimeout(2, TimeUnit.SECONDS).build()
-        val request = Request.Builder().url(url).build()
+        val hostPort = prefs.serverIp.ifEmpty { "192.168.29.102:8765" }
+        val parts = hostPort.split(":")
+        val host = parts.getOrElse(0) { "192.168.29.102" }
+        val port = parts.getOrElse(1) { "8765" }.toIntOrNull() ?: 8765
 
-        client.newWebSocket(request, object : WebSocketListener() {
-            override fun onOpen(webSocket: WebSocket, response: Response) {
-                mainHandler.post {
-                    updateConnectionStatus(true)
-                    tvPingResult.text = "connected to $host"
+        Thread {
+            val reachable = try {
+                Socket().use { socket ->
+                    socket.connect(InetSocketAddress(host, port), 3000)
+                    true
                 }
-                webSocket.close(1000, "ping")
+            } catch (_: Exception) {
+                false
             }
-
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                mainHandler.post {
-                    updateConnectionStatus(false)
-                    tvPingResult.text = "offline (${t.message ?: "timeout"})"
-                }
+            mainHandler.post {
+                updateConnectionStatus(reachable)
+                tvPingResult.text = if (reachable) "connected to $hostPort" else "offline — daemon not reachable"
             }
-        })
+        }.start()
     }
 
     fun updateConnectionStatus(connected: Boolean) {
@@ -217,11 +213,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkOverlayPermission(): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            Settings.canDrawOverlays(this)
-        } else {
-            true
-        }
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Settings.canDrawOverlays(this) else true
     }
 
     private fun requestOverlayPermission() {
@@ -235,27 +227,23 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startFloatingService() {
-        val intent = Intent(this, FloatingWidgetService::class.java)
-        startService(intent)
+        startService(Intent(this, FloatingWidgetService::class.java))
         isFloatingShown = true
         btnToggleFloating.text = "Hide Floating Pill"
-        Toast.makeText(this, "Floating pill docked on right edge", Toast.LENGTH_SHORT).show()
+        Toast.makeText(this, "Floating pill is on the right edge of your screen", Toast.LENGTH_SHORT).show()
     }
 
     private fun stopFloatingService() {
-        val intent = Intent(this, FloatingWidgetService::class.java)
-        stopService(intent)
+        stopService(Intent(this, FloatingWidgetService::class.java))
         isFloatingShown = false
         btnToggleFloating.text = "Show Floating Pill"
     }
 
     private fun initiateListening() {
         if (rbInternal.isChecked) {
-            // Internal audio requires MediaProjection
             val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             mediaProjectionLauncher.launch(projectionManager.createScreenCaptureIntent())
         } else {
-            // Standard microphone input - ONLY requests microphone permission!
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                 startAudioService(AudioCaptureService.SOURCE_MIC, null)
             } else {
@@ -284,9 +272,9 @@ class MainActivity : AppCompatActivity() {
 
         isListening = true
         btnStartListening.text = "Stop Listening"
-        btnStartListening.setBackgroundColor(ContextCompat.getColor(this, R.color.accent_red))
+        btnStartListening.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_red)
 
-        // Also ensure floating pill is visible
+        // Auto-show floating pill if overlay is permitted
         if (!isFloatingShown && checkOverlayPermission()) {
             startFloatingService()
         }
@@ -300,7 +288,7 @@ class MainActivity : AppCompatActivity() {
 
         isListening = false
         btnStartListening.text = "Start Listening"
-        btnStartListening.setBackgroundColor(ContextCompat.getColor(this, R.color.accent_neutral))
+        btnStartListening.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_neutral)
     }
 
     fun refreshAlerts() {
@@ -309,25 +297,29 @@ class MainActivity : AppCompatActivity() {
             llAlertsContainer.removeAllViews()
 
             if (alerts.isEmpty()) {
-                llAlertsContainer.addView(tvNoAlerts)
+                val tv = TextView(this).apply {
+                    text = "No detections yet."
+                    setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_tertiary))
+                    textSize = 12f
+                    setPadding(16.dp, 16.dp, 16.dp, 16.dp)
+                    setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.bg_card))
+                }
+                llAlertsContainer.addView(tv)
                 return@post
             }
 
             for (item in alerts) {
                 val card = LayoutInflater.from(this).inflate(R.layout.item_alert_history, llAlertsContainer, false)
-                val tvSpeaker = card.findViewById<TextView>(R.id.tvHistorySpeaker)
-                val tvSentence = card.findViewById<TextView>(R.id.tvHistorySentence)
-
-                val speaker = item.optString("speaker", "Someone")
-                val sentence = item.optString("sentence", "")
-
-                tvSpeaker.text = "$speaker called you"
-                tvSentence.text = "\"$sentence\""
-
+                card.findViewById<TextView>(R.id.tvHistorySpeaker).text =
+                    item.optString("speaker", "Someone") + " called you"
+                card.findViewById<TextView>(R.id.tvHistorySentence).text =
+                    "\"${item.optString("sentence", "")}\""
                 llAlertsContainer.addView(card)
             }
         }
     }
+
+    private val Int.dp: Int get() = (this * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
         instance = null

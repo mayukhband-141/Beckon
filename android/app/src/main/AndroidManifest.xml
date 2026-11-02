@@ -7,6 +7,7 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PROJECTION" />
 
     <application
@@ -33,14 +34,13 @@
             android:enabled="true"
             android:exported="false" />
 
-        <!-- Internal Audio Playback Capture Service -->
+        <!-- Audio Capture Service: microphone (default) or mediaProjection (internal) -->
         <service
             android:name=".AudioCaptureService"
             android:enabled="true"
             android:exported="false"
-            android:foregroundServiceType="mediaProjection" />
+            android:foregroundServiceType="microphone|mediaProjection" />
 
     </application>
 
 </manifest>
-
