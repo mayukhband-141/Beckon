@@ -1,22 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- Matte graphite & monochrome palette -->
-    <color name="bg_dark">#0F1012</color>
-    <color name="bg_card">#17181C</color>
-    <color name="bg_card_translucent">#F217181C</color>
-    <color name="bg_elevated">#1E2025</color>
-    <color name="border_subtle">#282A30</color>
-    <color name="border_active">#3F424D</color>
+    <color name="bg_dark">#0B0C0E</color>
+    <color name="bg_card">#131518</color>
+    <color name="bg_card_translucent">#E6131518</color>
+    <color name="bg_elevated">#1A1C22</color>
+    <color name="bg_elevated_subtle">#23262E</color>
+    <color name="border_subtle">#262831</color>
+    <color name="border_active">#3D414D</color>
 
     <color name="accent_green">#10B981</color>
+    <color name="accent_green_subtle">#1A10B981</color>
     <color name="accent_red">#EF4444</color>
+    <color name="accent_red_subtle">#1AEF4444</color>
     <color name="accent_neutral">#FFFFFF</color>
+    <color name="accent_chalk">#EDEDEE</color>
 
     <!-- Legacy / compatibility fallbacks -->
-    <color name="accent_blue">#3F424D</color>
+    <color name="accent_blue">#3D414D</color>
     <color name="accent_blue_light">#8E919A</color>
 
-    <color name="text_primary">#F5F5F7</color>
+    <color name="text_primary">#F4F4F6</color>
     <color name="text_secondary">#8E919A</color>
-    <color name="text_tertiary">#5A5D66</color>
+    <color name="text_tertiary">#565964</color>
 </resources>

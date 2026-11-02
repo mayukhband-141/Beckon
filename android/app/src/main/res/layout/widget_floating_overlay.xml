@@ -10,21 +10,22 @@
         android:id="@+id/viewCollapsed"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:minWidth="130dp"
-        android:minHeight="44dp"
+        android:minWidth="126dp"
+        android:minHeight="42dp"
         android:background="@drawable/bg_widget_pill"
+        android:elevation="8dp"
         android:gravity="center_vertical"
         android:orientation="horizontal"
         android:paddingStart="10dp"
-        android:paddingTop="6dp"
-        android:paddingEnd="12dp"
-        android:paddingBottom="6dp"
+        android:paddingTop="5dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="5dp"
         android:visibility="visible">
 
         <ImageView
             android:id="@+id/ivIcon"
-            android:layout_width="28dp"
-            android:layout_height="28dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:contentDescription="@string/app_name"
             android:src="@drawable/ic_beckon" />
 
@@ -33,31 +34,33 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="-0.01"
             android:text="Beckon"
             android:textColor="@color/text_primary"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:textSize="12.5sp" />
 
         <!-- Live audio indicator dot when listening -->
         <View
             android:id="@+id/dotActive"
-            android:layout_width="6dp"
-            android:layout_height="6dp"
-            android:layout_marginStart="6dp"
-            android:background="@drawable/bg_shazam_button"
+            android:layout_width="7dp"
+            android:layout_height="7dp"
+            android:layout_marginStart="8dp"
+            android:background="@drawable/bg_dot_circle"
+            android:backgroundTint="@color/accent_green"
             android:visibility="gone" />
 
     </LinearLayout>
 
-    <!-- 2. Expanded Shazam Input Card (When tapped) -->
+    <!-- 2. Expanded Control Sheet (When tapped) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/viewExpanded"
-        android:layout_width="290dp"
+        android:layout_width="280dp"
         android:layout_height="wrap_content"
         android:visibility="gone"
-        app:cardBackgroundColor="@color/bg_card_translucent"
+        app:cardBackgroundColor="@color/bg_card"
         app:cardCornerRadius="16dp"
-        app:cardElevation="12dp"
+        app:cardElevation="14dp"
         app:strokeColor="@color/border_subtle"
         app:strokeWidth="1dp">
 
@@ -66,7 +69,7 @@
             android:layout_height="wrap_content"
             android:gravity="center_horizontal"
             android:orientation="vertical"
-            android:padding="18dp">
+            android:padding="16dp">
 
             <RelativeLayout
                 android:layout_width="match_parent"
@@ -75,10 +78,11 @@
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:fontFamily="sans-serif-medium"
+                    android:letterSpacing="-0.01"
                     android:text="@string/keep_an_ear_out"
                     android:textColor="@color/text_primary"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
+                    android:textSize="13sp" />
 
                 <ImageView
                     android:id="@+id/btnCloseExpanded"
@@ -94,12 +98,15 @@
                 android:id="@+id/etTargetNames"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="10dp"
-                android:background="@drawable/bg_widget_pill"
+                android:layout_marginTop="12dp"
+                android:background="@drawable/bg_input_field"
                 android:hint="@string/name_hint"
                 android:importantForAutofill="no"
                 android:inputType="textPersonName"
-                android:padding="10dp"
+                android:paddingStart="12dp"
+                android:paddingTop="9dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="9dp"
                 android:text="@string/default_name"
                 android:textColor="@color/text_primary"
                 android:textColorHint="@color/text_tertiary"
@@ -108,8 +115,8 @@
             <!-- The Big Shazam Listen Button -->
             <FrameLayout
                 android:id="@+id/btnShazamListen"
-                android:layout_width="68dp"
-                android:layout_height="68dp"
+                android:layout_width="64dp"
+                android:layout_height="64dp"
                 android:layout_marginTop="18dp"
                 android:background="@drawable/bg_shazam_button"
                 android:clickable="true"
@@ -117,11 +124,12 @@
 
                 <ImageView
                     android:id="@+id/ivShazamIcon"
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
+                    android:layout_width="26dp"
+                    android:layout_height="26dp"
                     android:layout_gravity="center"
                     android:contentDescription="@string/tap_to_listen"
-                    android:src="@drawable/ic_mic" />
+                    android:src="@drawable/ic_mic"
+                    app:tint="@color/text_primary" />
             </FrameLayout>
 
             <TextView
@@ -129,10 +137,10 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="10dp"
+                android:fontFamily="sans-serif-medium"
                 android:text="@string/tap_to_listen"
                 android:textColor="@color/text_secondary"
-                android:textSize="11sp"
-                android:textStyle="bold" />
+                android:textSize="11.5sp" />
 
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
@@ -140,14 +148,14 @@
     <!-- 3. Alert HUD Banner (When name is detected inside call) -->
     <com.google.android.material.card.MaterialCardView
         android:id="@+id/viewAlert"
-        android:layout_width="300dp"
+        android:layout_width="310dp"
         android:layout_height="wrap_content"
         android:visibility="gone"
         app:cardBackgroundColor="@color/bg_card"
         app:cardCornerRadius="14dp"
         app:cardElevation="16dp"
-        app:strokeColor="@color/border_active"
-        app:strokeWidth="1.5dp">
+        app:strokeColor="@color/accent_green"
+        app:strokeWidth="1.2dp">
 
         <LinearLayout
             android:layout_width="match_parent"
@@ -159,14 +167,28 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <TextView
-                    android:id="@+id/tvAlertSpeaker"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Someone called you!"
-                    android:textColor="@color/accent_green"
-                    android:textSize="13sp"
-                    android:textStyle="bold" />
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <View
+                        android:layout_width="7dp"
+                        android:layout_height="7dp"
+                        android:background="@drawable/bg_dot_circle"
+                        android:backgroundTint="@color/accent_green" />
+
+                    <TextView
+                        android:id="@+id/tvAlertSpeaker"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:text="Someone called you!"
+                        android:textColor="@color/accent_green"
+                        android:textSize="13sp" />
+                </LinearLayout>
 
                 <ImageView
                     android:id="@+id/btnDismissAlert"
@@ -182,15 +204,18 @@
                 android:id="@+id/tvAlertSentence"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:background="@color/bg_elevated"
-                android:padding="8dp"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_input_field"
+                android:lineSpacingExtra="2dp"
+                android:paddingStart="12dp"
+                android:paddingTop="9dp"
+                android:paddingEnd="12dp"
+                android:paddingBottom="9dp"
                 android:text="Hey Mayukh, what are your thoughts on this?"
                 android:textColor="@color/text_primary"
-                android:textSize="12.5sp" />
+                android:textSize="13sp" />
 
         </LinearLayout>
     </com.google.android.material.card.MaterialCardView>
 
 </FrameLayout>
-

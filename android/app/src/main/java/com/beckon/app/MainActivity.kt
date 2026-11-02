@@ -164,14 +164,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun syncButtonStates() {
-        if (isListening) {
-            btnStartListening.text = "Stop Listening"
-            btnStartListening.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_red)
+        if (btnStartListening is com.google.android.material.button.MaterialButton) {
+            val mb = btnStartListening as com.google.android.material.button.MaterialButton
+            if (isListening) {
+                mb.text = "Stop Listening"
+                mb.setIconResource(R.drawable.ic_stop)
+                mb.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_red)
+                mb.setTextColor(ContextCompat.getColor(this, R.color.text_primary))
+                mb.iconTint = ContextCompat.getColorStateList(this, R.color.text_primary)
+            } else {
+                mb.text = "Start Listening"
+                mb.setIconResource(R.drawable.ic_mic)
+                mb.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_neutral)
+                mb.setTextColor(android.graphics.Color.parseColor("#09090B"))
+                mb.iconTint = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#09090B"))
+            }
         } else {
-            btnStartListening.text = "Start Listening"
-            btnStartListening.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_neutral)
+            btnStartListening.text = if (isListening) "Stop Listening" else "Start Listening"
+            btnStartListening.backgroundTintList = ContextCompat.getColorStateList(
+                this,
+                if (isListening) R.color.accent_red else R.color.accent_neutral
+            )
         }
-        btnToggleFloating.text = if (isFloatingShown) "Hide Floating Pill" else "Show Floating Pill"
+        btnToggleFloating.text = if (isFloatingShown) "Hide Floating Pill" else "Floating Pill"
     }
 
     private fun updatePermissionsUi() {
@@ -336,11 +351,11 @@ class MainActivity : AppCompatActivity() {
         mainHandler.post {
             if (connected) {
                 dotEngineStatus.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_green)
-                tvEngineStatus.text = "ready"
+                tvEngineStatus.text = "ONLINE"
                 tvEngineStatus.setTextColor(ContextCompat.getColor(this, R.color.accent_green))
             } else {
                 dotEngineStatus.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_red)
-                tvEngineStatus.text = "offline"
+                tvEngineStatus.text = "OFFLINE"
                 tvEngineStatus.setTextColor(ContextCompat.getColor(this, R.color.text_secondary))
             }
         }
@@ -460,8 +475,7 @@ class MainActivity : AppCompatActivity() {
             }
 
             isListening = true
-            btnStartListening.text = "Stop Listening"
-            btnStartListening.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_red)
+            syncButtonStates()
 
             // Auto-show floating pill if overlay is permitted
             if (!isFloatingShown && checkOverlayPermission()) {
@@ -481,8 +495,7 @@ class MainActivity : AppCompatActivity() {
         } catch (_: Exception) {}
 
         isListening = false
-        btnStartListening.text = "Start Listening"
-        btnStartListening.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_neutral)
+        syncButtonStates()
     }
 
     fun refreshAlerts() {
@@ -492,11 +505,11 @@ class MainActivity : AppCompatActivity() {
 
             if (alerts.isEmpty()) {
                 val tv = TextView(this).apply {
-                    text = "No detections yet."
+                    text = "No detections yet. Beckon is listening for your name."
                     setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_tertiary))
                     textSize = 12f
                     setPadding(16.dp, 16.dp, 16.dp, 16.dp)
-                    setBackgroundColor(ContextCompat.getColor(this@MainActivity, R.color.bg_card))
+                    setBackgroundResource(R.drawable.bg_input_field)
                 }
                 llAlertsContainer.addView(tv)
                 return@post

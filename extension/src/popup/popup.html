@@ -13,8 +13,8 @@
       width: 316px;
       padding: 18px;
       font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
-      background: #0d0f17;
-      color: #f1f5f9;
+      background: #0b0c0e;
+      color: #f4f4f6;
       user-select: none;
       -webkit-font-smoothing: antialiased;
     }
@@ -38,7 +38,8 @@
     .brand-icon {
       width: 18px;
       height: 18px;
-      background: #3b82f6;
+      background: #1c1e24;
+      border: 1px solid #282c35;
       border-radius: 5px;
       display: flex;
       align-items: center;
@@ -47,7 +48,7 @@
     .brand-icon svg {
       width: 11px;
       height: 11px;
-      fill: white;
+      fill: #ffffff;
     }
 
     .status-pill {
@@ -56,9 +57,9 @@
       gap: 5px;
       font-size: 11px;
       font-weight: 500;
-      color: #94a3b8;
-      background: #171b26;
-      border: 1px solid #23293a;
+      color: #8e919a;
+      background: #14161c;
+      border: 1px solid #232731;
       padding: 3px 9px;
       border-radius: 20px;
     }
@@ -112,8 +113,8 @@
     .name-input {
       width: 100%;
       padding: 11px 12px;
-      background: #151924;
-      border: 1px solid #242c3d;
+      background: #14161c;
+      border: 1px solid #232731;
       border-radius: 9px;
       color: #ffffff;
       font-size: 14px;
@@ -122,9 +123,9 @@
       transition: all 0.15s ease;
     }
     .name-input:focus {
-      border-color: #3b82f6;
-      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
-      background: #171c2a;
+      border-color: #3f4452;
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
+      background: #181b22;
     }
     .name-input::placeholder {
       color: #475569;
@@ -152,13 +153,12 @@
       letter-spacing: -0.1px;
     }
     .btn-start {
-      background: #2563eb;
-      color: #ffffff;
-      box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+      background: #ededee;
+      color: #09090b;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
     }
     .btn-start:hover {
-      background: #1d4ed8;
-      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+      background: #ffffff;
     }
     .btn-start:active {
       transform: scale(0.99);
@@ -176,8 +176,8 @@
     /* Active Listening Card */
     .listening-box {
       display: none;
-      background: #131722;
-      border: 1px solid #222a3d;
+      background: #13151b;
+      border: 1px solid #232731;
       border-radius: 10px;
       padding: 14px;
       margin-bottom: 14px;
@@ -207,7 +207,7 @@
     .wave-bar {
       width: 2.5px;
       height: 100%;
-      background: #3b82f6;
+      background: #10b981;
       border-radius: 2px;
       animation: wave 1.2s ease-in-out infinite;
     }
@@ -299,7 +299,7 @@
   <div id="active-view" class="listening-box">
     <div class="listening-header">
       <div class="listening-target">
-        Listening for <span id="active-names-display" style="color: #60a5fa;">"Mayukh"</span>
+        Listening for <span id="active-names-display" style="color: #10b981;">"Mayukh"</span>
       </div>
       <div class="wave-bars">
         <div class="wave-bar"></div>

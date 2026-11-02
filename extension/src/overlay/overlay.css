@@ -15,13 +15,13 @@
 .beckon-card {
   pointer-events: auto;
   width: 370px;
-  background: rgba(15, 19, 29, 0.94);
+  background: rgba(11, 12, 14, 0.94);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
   padding: 16px;
-  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.04);
   color: #f1f5f9;
   animation: beckon-card-in 0.28s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
@@ -57,8 +57,9 @@
   width: 22px;
   height: 22px;
   border-radius: 6px;
-  background: #2563eb;
-  color: white;
+  background: #181a20;
+  border: 1px solid #272a34;
+  color: #10b981;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -69,9 +70,9 @@
 .beckon-badge {
   font-size: 10.5px;
   font-weight: 600;
-  color: #60a5fa;
-  background: rgba(37, 99, 235, 0.15);
-  border: 1px solid rgba(37, 99, 235, 0.3);
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.12);
+  border: 1px solid rgba(16, 185, 129, 0.25);
   padding: 1px 7px;
   border-radius: 12px;
 }
@@ -99,7 +100,7 @@
   color: #e2e8f0;
   margin-bottom: 10px;
   background: rgba(255, 255, 255, 0.03);
-  border-left: 2.5px solid #3b82f6;
+  border-left: 2.5px solid #10b981;
   padding: 10px 12px;
   border-radius: 0 8px 8px 0;
 }
