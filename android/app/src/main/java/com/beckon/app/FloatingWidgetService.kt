@@ -9,6 +9,8 @@ import android.os.Build
 import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
+import android.provider.Settings
+import android.util.Log
 import android.view.*
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -16,6 +18,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import com.beckon.app.util.ChimePlayer
 import com.beckon.app.util.HapticFeedback
+import com.beckon.app.util.PreferencesManager
 import kotlin.math.abs
 
 class FloatingWidgetService : Service() {
@@ -41,6 +44,7 @@ class FloatingWidgetService : Service() {
 
     private var isListening = false
     private val mainHandler = Handler(Looper.getMainLooper())
+    private lateinit var prefs: PreferencesManager
 
     companion object {
         var instance: FloatingWidgetService? = null
@@ -52,7 +56,14 @@ class FloatingWidgetService : Service() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        prefs = PreferencesManager(this)
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+            Log.e("FloatingWidget", "Overlay permission not granted, stopping service")
+            stopSelf()
+            return
+        }
 
         initFloatingView()
     }
@@ -77,6 +88,9 @@ class FloatingWidgetService : Service() {
         btnDismissAlert = floatingView.findViewById(R.id.btnDismissAlert)
         btnCloseExpanded = floatingView.findViewById(R.id.btnCloseExpanded)
 
+        // Preload saved target names
+        etTargetNames.setText(prefs.targetNames)
+
         val layoutFlag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
         } else {
@@ -84,24 +98,23 @@ class FloatingWidgetService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
+        // Docked on the right-hand edge by default, fully visible
         val params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             layoutFlag,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.START
-            x = 30
-            y = 200
+            gravity = Gravity.CENTER_VERTICAL or Gravity.END
+            x = 16
+            y = 0
         }
 
         windowManager.addView(floatingView, params)
 
-        // Setup Drag & Click behavior for the collapsed pill
         setupDragBehavior(params)
 
-        // Setup interaction listeners
         viewCollapsed.setOnClickListener {
             expandWidget(params)
         }
@@ -136,7 +149,8 @@ class FloatingWidgetService : Service() {
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    params.x = initialX + (event.rawX - initialTouchX).toInt()
+                    // For Gravity.END, moving left increases x
+                    params.x = initialX - (event.rawX - initialTouchX).toInt()
                     params.y = initialY + (event.rawY - initialTouchY).toInt()
                     windowManager.updateViewLayout(floatingView, params)
                     true
@@ -144,7 +158,7 @@ class FloatingWidgetService : Service() {
                 MotionEvent.ACTION_UP -> {
                     val diffX = abs(event.rawX - initialTouchX)
                     val diffY = abs(event.rawY - initialTouchY)
-                    if (diffX < 10 && diffY < 10) {
+                    if (diffX < 12 && diffY < 12) {
                         view.performClick()
                     }
                     true
@@ -155,18 +169,19 @@ class FloatingWidgetService : Service() {
     }
 
     private fun expandWidget(params: WindowManager.LayoutParams) {
-        // Enable touch and input focus
-        params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        // Enable keyboard and touch focus when expanded
+        params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
         windowManager.updateViewLayout(floatingView, params)
 
+        etTargetNames.setText(prefs.targetNames)
         viewCollapsed.visibility = View.GONE
         viewAlert.visibility = View.GONE
         viewExpanded.visibility = View.VISIBLE
     }
 
     private fun collapseWidget(params: WindowManager.LayoutParams) {
-        // Return to non-focusable floating mode
-        params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+        // Revert to non-focusable floating mode
+        params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         windowManager.updateViewLayout(floatingView, params)
 
         viewExpanded.visibility = View.GONE
@@ -176,13 +191,15 @@ class FloatingWidgetService : Service() {
 
     private fun toggleListening(params: WindowManager.LayoutParams) {
         isListening = !isListening
+        val namesText = etTargetNames.text.toString().trim().ifEmpty { "Mayukh" }
+        prefs.targetNames = namesText
+
+        val namesList = namesText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val canonical = namesList.firstOrNull() ?: "Mayukh"
+
         if (isListening) {
-            val namesText = etTargetNames.text.toString().trim().ifEmpty { "Mayukh" }
-            val namesList = namesText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-
-            AudioCaptureService.instance?.updateNames(namesList.firstOrNull() ?: "Mayukh", namesList.drop(1))
-
-            tvCollapsedStatus.text = "Listening · ${namesList.firstOrNull() ?: "Mayukh"}"
+            AudioCaptureService.instance?.updateNames(canonical, namesList.drop(1))
+            tvCollapsedStatus.text = "Listening · $canonical"
             dotActive.visibility = View.VISIBLE
             ivShazamIcon.setImageResource(R.drawable.ic_stop)
             tvShazamActionText.text = "Tap to Stop"
@@ -198,25 +215,29 @@ class FloatingWidgetService : Service() {
         }
     }
 
+    fun updateNamesFromDashboard(names: String) {
+        prefs.targetNames = names
+        if (::etTargetNames.isInitialized) {
+            etTargetNames.setText(names)
+        }
+    }
+
     fun showAlert(speaker: String, sentence: String, score: Double) {
         mainHandler.post {
-            // 1. Play synthesized two-tone chime & vibration
             ChimePlayer.playChime()
             HapticFeedback.triggerAlertVibration(this)
 
-            // 2. Expand floating alert card on top of the screen
             val params = floatingView.layoutParams as WindowManager.LayoutParams
-            params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS
+            params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
             windowManager.updateViewLayout(floatingView, params)
 
-            tvAlertSpeaker.text = "$speaker called you!"
+            tvAlertSpeaker.text = "$speaker called you"
             tvAlertSentence.text = "\"$sentence\""
 
             viewCollapsed.visibility = View.GONE
             viewExpanded.visibility = View.GONE
             viewAlert.visibility = View.VISIBLE
 
-            // Auto-collapse alert after 10 seconds
             mainHandler.removeCallbacksAndMessages(null)
             mainHandler.postDelayed({
                 dismissAlert(params)
@@ -233,10 +254,11 @@ class FloatingWidgetService : Service() {
 
     override fun onDestroy() {
         if (::floatingView.isInitialized) {
-            windowManager.removeView(floatingView)
+            try {
+                windowManager.removeView(floatingView)
+            } catch (_: Exception) {}
         }
         instance = null
         super.onDestroy()
     }
 }
-
