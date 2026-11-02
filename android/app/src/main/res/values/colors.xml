@@ -12,8 +12,11 @@
     <color name="accent_red">#EF4444</color>
     <color name="accent_neutral">#FFFFFF</color>
 
+    <!-- Legacy / compatibility fallbacks -->
+    <color name="accent_blue">#3F424D</color>
+    <color name="accent_blue_light">#8E919A</color>
+
     <color name="text_primary">#F5F5F7</color>
     <color name="text_secondary">#8E919A</color>
     <color name="text_tertiary">#5A5D66</color>
 </resources>
-
