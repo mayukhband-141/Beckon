@@ -5,6 +5,11 @@ import argparse
 from daemon.app.config import DaemonConfig
 from daemon.app.server import BeckonServer
 
+class WebsocketsPingFilter(logging.Filter):
+    def filter(self, record):
+        # Suppress websockets' misleading internal message when plain HTTP health probes are answered with 200 OK
+        return "connection rejected (200 OK)" not in record.getMessage()
+
 def setup_logging():
     logging.basicConfig(
         level=logging.INFO,
@@ -12,6 +17,7 @@ def setup_logging():
         datefmt="%H:%M:%S",
         handlers=[logging.StreamHandler(sys.stdout)]
     )
+    logging.getLogger("websockets.server").addFilter(WebsocketsPingFilter())
 
 def main():
     parser = argparse.ArgumentParser(description="Beckon Meeting Audio Daemon")

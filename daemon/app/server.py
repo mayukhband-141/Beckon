@@ -123,6 +123,8 @@ class BeckonServer:
 
         # Only intercept non-WebSocket plain HTTP GET requests (e.g. socket pings)
         if request.path in ("/", "/ping", "/health"):
+            remote = getattr(connection, "remote_address", "client")
+            logger.info("Probe ping received from %s -> responded HTTP 200 OK", remote)
             return connection.respond(http.HTTPStatus.OK, "OK\n")
         return None
 
