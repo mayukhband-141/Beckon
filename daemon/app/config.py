@@ -14,7 +14,7 @@ class NameProfile:
 
 @dataclass
 class DaemonConfig:
-    host: str = "127.0.0.1"
+    host: str = "0.0.0.0"
     port: int = 8765
     auth_token: str = "beckon_dev_token_2026"
     

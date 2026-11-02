@@ -15,7 +15,7 @@ def setup_logging():
 
 def main():
     parser = argparse.ArgumentParser(description="Beckon Meeting Audio Daemon")
-    parser.add_argument("--host", default="127.0.0.1", help="Host address to bind")
+    parser.add_argument("--host", default="0.0.0.0", help="Host address to bind")
     parser.add_argument("--port", type=int, default=8765, help="Port to listen on")
     parser.add_argument("--model", default="base", help="Whisper model (tiny, base, small)")
     parser.add_argument("--name", default="Mayukh", help="Target user's name")
