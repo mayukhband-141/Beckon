@@ -37,18 +37,13 @@ android {
     buildFeatures {
         viewBinding = true
     }
-
-    applicationVariants.all {
-        outputs.all {
-            val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            output?.outputFileName = "beckon.apk"
-        }
-    }
 }
 
 tasks.register<Copy>("copyApkToDownloads") {
     dependsOn("assembleDebug")
-    from(layout.buildDirectory.file("outputs/apk/debug/beckon.apk"))
+    from(layout.buildDirectory.dir("outputs/apk/debug"))
+    include("*.apk")
+    rename { "beckon.apk" }
     into(File(System.getProperty("user.home"), "Downloads"))
 }
 

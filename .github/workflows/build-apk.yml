@@ -7,10 +7,11 @@ on:
 
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Set up JDK 17
@@ -19,19 +20,24 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Setup Gradle
+      - name: Set up Gradle 8.5
         uses: gradle/actions/setup-gradle@v3
-
-      - name: Grant execute permission for gradlew
-        run: chmod +x android/gradlew || true
+        with:
+          gradle-version: '8.5'
 
       - name: Build Debug APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: gradle assembleDebug --stacktrace --no-daemon
 
-      - name: Upload APK Artifact
+      - name: Prepare APK Artifact
+        run: |
+          mkdir -p dist
+          find android/app/build/outputs/apk/debug/ -name "*.apk" -exec cp {} dist/beckon.apk \;
+          ls -la dist/
+
+      - name: Upload Beckon APK
         uses: actions/upload-artifact@v4
         with:
-          name: beckon-apk
-          path: android/app/build/outputs/apk/debug/beckon.apk
-
+          name: beckon.apk
+          path: dist/beckon.apk
+          retention-days: 14
