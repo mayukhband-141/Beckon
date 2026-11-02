@@ -32,17 +32,7 @@ class BeckonServer:
 
     async def broadcast_alert(self, alert_data: dict):
         message = json.dumps(alert_data)
-        source = getattr(self, "current_audio_source", None)
-        logger.info(f"Triggering alert for {alert_data.get('name')}. Source device: {getattr(source, 'remote_address', 'broadcast')}")
-
-        if source and source in self.connected_clients:
-            try:
-                await source.send(message)
-                logger.info(f"Alert delivered directly to source device {source.remote_address}")
-                return
-            except Exception as e:
-                logger.error(f"Failed to send alert to source client: {e}")
-
+        logger.info(f"Broadcasting alert to {len(self.connected_clients)} clients: {alert_data.get('name')}")
         if self.connected_clients:
             await asyncio.gather(
                 *[client.send(message) for client in self.connected_clients],

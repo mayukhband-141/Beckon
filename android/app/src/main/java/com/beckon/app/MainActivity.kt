@@ -301,7 +301,13 @@ class MainActivity : AppCompatActivity() {
         Thread {
             try {
                 Socket().use { socket ->
+                    socket.soTimeout = 4000
                     socket.connect(InetSocketAddress(host, port), 4000)
+                    val writer = socket.getOutputStream().bufferedWriter()
+                    writer.write("GET / HTTP/1.1\r\nHost: $host\r\nConnection: close\r\n\r\n")
+                    writer.flush()
+                    val reader = socket.getInputStream().bufferedReader()
+                    reader.readLine() // Cleanly consumes HTTP status response line
                 }
                 mainHandler.post {
                     updateConnectionStatus(true)

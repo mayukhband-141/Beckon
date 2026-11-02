@@ -86,6 +86,7 @@ class DetectionPipeline:
 
                     clean_text = text.strip()
                     if clean_text and clean_text not in self.processed_texts:
+                        logger.info(f"[Heard]: \"{clean_text}\"")
                         # Keep a small set to prevent identical consecutive duplicate checks
                         self.processed_texts.add(clean_text)
                         if len(self.processed_texts) > 50:
