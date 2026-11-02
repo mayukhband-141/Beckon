@@ -66,6 +66,21 @@ yarn-error.log*
 pnpm-debug.log*
 .pnpm-store/
 
+# Android & Gradle
+.gradle/
+**/build/
+*.apk
+*.ap_
+*.aab
+local.properties
+*.jks
+*.keystore
+.cxx/
+.externalNativeBuild/
+captures/
+*.iml
+.navigation/
+
 # Audio & Logs (Protect Privacy: never commit meeting audio or test recordings)
 *.wav
 *.mp3

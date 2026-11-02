@@ -34,3 +34,4 @@ jobs:
         with:
           name: beckon-apk
           path: android/app/build/outputs/apk/debug/beckon.apk
+
