@@ -95,7 +95,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onResume() {
         super.onResume()
-        // Restore UI state from running services (handles app kill + reopen)
         isListening = AudioCaptureService.instance != null
         isFloatingShown = FloatingWidgetService.instance != null
         syncButtonStates()
@@ -161,10 +160,26 @@ class MainActivity : AppCompatActivity() {
 
         btnToggleFloating.setOnClickListener {
             if (!isFloatingShown) {
-                if (!checkOverlayPermission()) requestOverlayPermission() else startFloatingService()
+                if (!checkOverlayPermission()) {
+                    requestOverlayPermission()
+                } else {
+                    startFloatingService()
+                }
             } else {
                 stopFloatingService()
             }
+        }
+
+        // Long press on floating button opens App Info (crucial for Xiaomi / HyperOS Other Permissions)
+        btnToggleFloating.setOnLongClickListener {
+            try {
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:$packageName")
+                }
+                startActivity(intent)
+                Toast.makeText(this, "Enable 'Display pop-up windows while running in background' if on Xiaomi", Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {}
+            true
         }
 
         btnStartListening.setOnClickListener {
@@ -172,7 +187,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // --- Ping via raw TCP socket (reliable; no WebSocket handshake overhead) ---
     private fun pingDaemon() {
         tvPingResult.text = "pinging..."
         updateConnectionStatus(false)
@@ -227,16 +241,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun startFloatingService() {
-        startService(Intent(this, FloatingWidgetService::class.java))
-        isFloatingShown = true
-        btnToggleFloating.text = "Hide Floating Pill"
-        Toast.makeText(this, "Floating pill is on the right edge of your screen", Toast.LENGTH_SHORT).show()
+        try {
+            val intent = Intent(this, FloatingWidgetService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                ContextCompat.startForegroundService(this, intent)
+            } else {
+                startService(intent)
+            }
+            isFloatingShown = true
+            btnToggleFloating.text = "Hide Floating Pill"
+            Toast.makeText(this, "Floating pill docked on right edge", Toast.LENGTH_SHORT).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Could not start floating service: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
     }
 
     private fun stopFloatingService() {
-        stopService(Intent(this, FloatingWidgetService::class.java))
-        isFloatingShown = false
-        btnToggleFloating.text = "Show Floating Pill"
+        try {
+            stopService(Intent(this, FloatingWidgetService::class.java))
+            isFloatingShown = false
+            btnToggleFloating.text = "Show Floating Pill"
+        } catch (_: Exception) {}
     }
 
     private fun initiateListening() {
@@ -264,27 +289,33 @@ class MainActivity : AppCompatActivity() {
             putStringArrayListExtra(AudioCaptureService.EXTRA_NAMES, ArrayList(namesList))
         }
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(captureIntent)
-        } else {
-            startService(captureIntent)
-        }
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                ContextCompat.startForegroundService(this, captureIntent)
+            } else {
+                startService(captureIntent)
+            }
 
-        isListening = true
-        btnStartListening.text = "Stop Listening"
-        btnStartListening.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_red)
+            isListening = true
+            btnStartListening.text = "Stop Listening"
+            btnStartListening.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_red)
 
-        // Auto-show floating pill if overlay is permitted
-        if (!isFloatingShown && checkOverlayPermission()) {
-            startFloatingService()
+            // Auto-show floating pill if overlay is permitted
+            if (!isFloatingShown && checkOverlayPermission()) {
+                startFloatingService()
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Error starting service: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun stopListening() {
-        val captureIntent = Intent(this, AudioCaptureService::class.java).apply {
-            action = AudioCaptureService.ACTION_STOP
-        }
-        startService(captureIntent)
+        try {
+            val captureIntent = Intent(this, AudioCaptureService::class.java).apply {
+                action = AudioCaptureService.ACTION_STOP
+            }
+            startService(captureIntent)
+        } catch (_: Exception) {}
 
         isListening = false
         btnStartListening.text = "Start Listening"

@@ -1,6 +1,9 @@
 package com.beckon.app
 
 import android.annotation.SuppressLint
+import android.app.Notification
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -16,6 +19,7 @@ import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.core.app.NotificationCompat
 import com.beckon.app.util.ChimePlayer
 import com.beckon.app.util.HapticFeedback
 import com.beckon.app.util.PreferencesManager
@@ -48,6 +52,9 @@ class FloatingWidgetService : Service() {
     private lateinit var prefs: PreferencesManager
 
     companion object {
+        private const val CHANNEL_ID = "beckon_widget_channel"
+        private const val NOTIF_ID = 102
+
         var instance: FloatingWidgetService? = null
             private set
     }
@@ -58,6 +65,8 @@ class FloatingWidgetService : Service() {
         super.onCreate()
         instance = this
         prefs = PreferencesManager(this)
+
+        startForegroundNotification()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
             Log.e("FloatingWidget", "Overlay permission not granted — stopping service")
@@ -72,6 +81,35 @@ class FloatingWidgetService : Service() {
         } catch (e: Exception) {
             Log.e("FloatingWidget", "Failed to init floating view", e)
             stopSelf()
+        }
+    }
+
+    private fun startForegroundNotification() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "Beckon Floating Widget",
+                NotificationManager.IMPORTANCE_MIN
+            ).apply {
+                description = "Keeps Beckon floating pill docked"
+                setShowBadge(false)
+            }
+            val manager = getSystemService(NotificationManager::class.java)
+            manager?.createNotificationChannel(channel)
+        }
+
+        val notif: Notification = NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("Beckon floating pill is active")
+            .setContentText("Docked on your screen.")
+            .setSmallIcon(R.drawable.ic_notification)
+            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setOngoing(true)
+            .build()
+
+        try {
+            startForeground(NOTIF_ID, notif)
+        } catch (e: Exception) {
+            Log.w("FloatingWidget", "startForeground failed: ${e.message}")
         }
     }
 
@@ -104,24 +142,29 @@ class FloatingWidgetService : Service() {
             WindowManager.LayoutParams.TYPE_PHONE
         }
 
-        // Position: right edge, vertically centered at 40% from top
-        // Using Gravity.TOP | Gravity.END so Y offset is measured from the top of screen
-        // x=0 = flush with right edge (for Gravity.END, x is offset from right)
+        val metrics = resources.displayMetrics
+        val screenWidth = metrics.widthPixels
+        val screenHeight = metrics.heightPixels
+
+        // Anchor at TOP | START so coordinates are positive screen pixels
+        // Place initial position visible at right side, 35% from screen top
+        val initialX = (screenWidth - 130 * metrics.density).toInt().coerceAtLeast(0)
+        val initialY = (screenHeight * 0.35f).toInt()
+
         params = WindowManager.LayoutParams(
             WindowManager.LayoutParams.WRAP_CONTENT,
             WindowManager.LayoutParams.WRAP_CONTENT,
             layoutFlag,
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
             PixelFormat.TRANSLUCENT
         ).apply {
-            gravity = Gravity.TOP or Gravity.END
-            x = 0
-            y = 300
+            gravity = Gravity.TOP or Gravity.START
+            x = initialX
+            y = initialY
         }
 
         windowManager.addView(floatingView, params)
-        setupDragBehavior()
+        setupDragBehavior(screenWidth, screenHeight)
         setupClickListeners()
     }
 
@@ -144,7 +187,7 @@ class FloatingWidgetService : Service() {
     }
 
     @SuppressLint("ClickableViewAccessibility")
-    private fun setupDragBehavior() {
+    private fun setupDragBehavior(screenWidth: Int, screenHeight: Int) {
         var initialX = 0
         var initialY = 0
         var initialTouchX = 0f
@@ -160,10 +203,15 @@ class FloatingWidgetService : Service() {
                     true
                 }
                 MotionEvent.ACTION_MOVE -> {
-                    // Gravity.END: x increases moving toward left; invert horizontal delta
-                    params.x = (initialX - (event.rawX - initialTouchX)).toInt().coerceAtLeast(0)
-                    params.y = (initialY + (event.rawY - initialTouchY)).toInt().coerceAtLeast(0)
-                    windowManager.updateViewLayout(floatingView, params)
+                    val deltaX = (event.rawX - initialTouchX).toInt()
+                    val deltaY = (event.rawY - initialTouchY).toInt()
+
+                    params.x = (initialX + deltaX).coerceIn(0, screenWidth - 60)
+                    params.y = (initialY + deltaY).coerceIn(0, screenHeight - 100)
+
+                    try {
+                        windowManager.updateViewLayout(floatingView, params)
+                    } catch (_: Exception) {}
                     true
                 }
                 MotionEvent.ACTION_UP -> {
@@ -180,9 +228,10 @@ class FloatingWidgetService : Service() {
     }
 
     private fun expandWidget() {
-        params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-        windowManager.updateViewLayout(floatingView, params)
+        params.flags = WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+        try {
+            windowManager.updateViewLayout(floatingView, params)
+        } catch (_: Exception) {}
 
         etTargetNames.setText(prefs.targetNames)
         viewCollapsed.visibility = View.GONE
@@ -191,9 +240,10 @@ class FloatingWidgetService : Service() {
     }
 
     private fun collapseWidget() {
-        params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-        windowManager.updateViewLayout(floatingView, params)
+        params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+        try {
+            windowManager.updateViewLayout(floatingView, params)
+        } catch (_: Exception) {}
 
         viewExpanded.visibility = View.GONE
         viewAlert.visibility = View.GONE
@@ -210,7 +260,7 @@ class FloatingWidgetService : Service() {
 
         if (isListening) {
             AudioCaptureService.instance?.updateNames(canonical, namesList.drop(1))
-            tvCollapsedStatus.text = "Listening — $canonical"
+            tvCollapsedStatus.text = "Listening · $canonical"
             dotActive.visibility = View.VISIBLE
             ivShazamIcon.setImageResource(R.drawable.ic_stop)
             tvShazamActionText.text = "Tap to Stop"
@@ -238,9 +288,10 @@ class FloatingWidgetService : Service() {
 
             if (!::floatingView.isInitialized) return@post
 
-            params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE or
-                    WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-            windowManager.updateViewLayout(floatingView, params)
+            params.flags = WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+            try {
+                windowManager.updateViewLayout(floatingView, params)
+            } catch (_: Exception) {}
 
             tvAlertSpeaker.text = "$speaker called you"
             tvAlertSentence.text = "\"$sentence\""
@@ -268,6 +319,9 @@ class FloatingWidgetService : Service() {
         if (::floatingView.isInitialized) {
             try { windowManager.removeView(floatingView) } catch (_: Exception) {}
         }
+        try {
+            stopForeground(STOP_FOREGROUND_REMOVE)
+        } catch (_: Exception) {}
         instance = null
         super.onDestroy()
     }
