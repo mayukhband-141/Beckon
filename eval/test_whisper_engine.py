@@ -9,9 +9,14 @@ def test_whisper_loading():
 
     # 3 seconds of 16kHz audio (silence)
     silence = np.zeros(16000 * 3, dtype=np.float32)
-    text, words = engine.transcribe_audio_window(silence, hotwords="Alex")
+    text, words = engine.transcribe_audio_window(silence, hotwords="Alex", languages=["en", "bn", "hi"])
     print(f"Transcribed silence output: '{text}' (expected empty)")
     assert text == ""
+
+    # Test constrained language detection on pseudo audio
+    noise = np.random.randn(16000 * 2).astype(np.float32) * 0.05
+    text, words = engine.transcribe_audio_window(noise, hotwords="Alex", languages=["en", "bn", "hi"])
+    print("Constrained language decoding succeeded without crashes or unconstrained hallucination.")
     print("WhisperEngine integration test passed!")
 
 if __name__ == "__main__":

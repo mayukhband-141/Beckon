@@ -59,11 +59,29 @@ class WhisperEngine:
         if energy < 0.001:
             return "", []
 
-        # Target language handling: if multiple languages are specified, allow auto-detection
+        # Target language handling: strictly constrain detection to user's allowed language array
         target_languages = languages or ["en", "bn", "hi"]
-        selected_lang = language
-        if selected_lang in ("auto", "multilingual", "") or (selected_lang is None and target_languages):
-            selected_lang = None  # None tells Whisper to auto-detect the spoken language
+        selected_lang = None
+
+        if language and language not in ("auto", "multilingual", ""):
+            # User specifically locked to one language (e.g. "en")
+            selected_lang = language
+        elif len(target_languages) == 1:
+            selected_lang = target_languages[0]
+        else:
+            # Constrain language detection ONLY within the user's allowed array.
+            # This prevents Whisper from misclassifying short/noisy audio into random languages like pl, ml, cy, etc.
+            try:
+                _, _, all_probs = self.model.detect_language(audio_window)
+                allowed_probs = {code: p for code, p in all_probs if code in target_languages}
+                if allowed_probs:
+                    selected_lang = max(allowed_probs, key=allowed_probs.get)
+                    logger.debug("Constrained language detection selected '%s' from %s", selected_lang, allowed_probs)
+                else:
+                    selected_lang = target_languages[0]
+            except Exception as e:
+                logger.warning("Language detection error: %s. Defaulting to '%s'", e, target_languages[0])
+                selected_lang = target_languages[0]
 
         # Construct decoder prompt with hotwords and Banglish/Hinglish cues
         prompt_parts = []

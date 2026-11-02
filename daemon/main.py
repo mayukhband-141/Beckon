@@ -21,6 +21,7 @@ def main():
     parser.add_argument("--model", default="base", help="Whisper model (tiny, base, small)")
     parser.add_argument("--name", default=None, help="Target user's name (defaults to BECKON_TARGET_NAME or 'Alex')")
     parser.add_argument("--aliases", nargs="*", default=None, help="Aliases list")
+    parser.add_argument("--languages", nargs="*", default=None, help="Allowed language codes for speech recognition (e.g. --languages en bn hi)")
     parser.add_argument("--sensitivity", default=None, choices=["strict", "balanced", "sensitive"], help="Sensitivity level")
     args = parser.parse_args()
 
@@ -32,6 +33,10 @@ def main():
         port=args.port,
         whisper_model=args.model
     )
+
+    if args.languages:
+        config.languages = args.languages
+    logger.info("Allowed recognition languages: %s", config.languages)
 
     if args.lan:
         config.host = "0.0.0.0"
