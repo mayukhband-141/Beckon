@@ -22,7 +22,11 @@ import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
+import android.app.PendingIntent
+import android.graphics.BitmapFactory
 import com.beckon.app.audio.AudioStreamer
+import com.beckon.app.util.ChimePlayer
+import com.beckon.app.util.HapticFeedback
 import com.beckon.app.util.PreferencesManager
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -149,6 +153,70 @@ class AudioCaptureService : Service() {
             .build()
     }
 
+    private fun postAlertNotification(speaker: String, sentence: String, @Suppress("UNUSED_PARAMETER") score: Double) {
+        val alertChannelId = "beckon_alert_channel"
+        val manager = getSystemService(NotificationManager::class.java)
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val channel = NotificationChannel(
+                alertChannelId,
+                "Beckon Name Alerts",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "High priority heads-up alerts when your name is called"
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 150, 100, 150)
+                setShowBadge(true)
+            }
+            manager?.createNotificationChannel(channel)
+        }
+
+        val openAppIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            this,
+            0,
+            openAppIntent,
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            } else {
+                PendingIntent.FLAG_UPDATE_CURRENT
+            }
+        )
+
+        val largeIcon = try {
+            BitmapFactory.decodeResource(resources, R.drawable.ic_beckon)
+        } catch (_: Exception) {
+            null
+        }
+
+        val notif = NotificationCompat.Builder(this, alertChannelId)
+            .setContentTitle("$speaker called you!")
+            .setContentText(sentence)
+            .setStyle(NotificationCompat.BigTextStyle().bigText("\"$sentence\""))
+            .setSmallIcon(R.drawable.ic_notification)
+            .apply {
+                if (largeIcon != null) setLargeIcon(largeIcon)
+            }
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
+            .build()
+
+        val alertNotifId = (System.currentTimeMillis() % 10000).toInt() + 200
+        try {
+            manager?.notify(alertNotifId, notif)
+        } catch (e: Exception) {
+            Log.e("AudioCaptureService", "Failed to post alert notification", e)
+        }
+
+        ChimePlayer.playChime()
+        HapticFeedback.triggerAlertVibration(this)
+    }
+
     @SuppressLint("MissingPermission")
     private fun startAudioCapture(
         sourceType: String,
@@ -163,6 +231,7 @@ class AudioCaptureService : Service() {
             serverUrl = serverUrl,
             onAlertReceived = { speaker, sentence, score ->
                 prefs.addAlert(speaker, sentence, score)
+                postAlertNotification(speaker, sentence, score)
                 FloatingWidgetService.instance?.showAlert(speaker, sentence, score)
                 MainActivity.instance?.refreshAlerts()
             },

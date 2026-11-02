@@ -81,18 +81,18 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message.type === "NAME_ALERT") {
       console.log("[Beckon SW] Received NAME_ALERT:", message.alert);
 
-      // Trigger desktop alert notification
-      chrome.notifications?.create("beckon-alert-" + Date.now(), {
-        type: "basic",
-        iconUrl: chrome.runtime.getURL("icons/icon128.png"),
-        title: `${message.alert.speaker || 'Someone'} called your name!`,
-        message: message.alert.sentence || "Someone just mentioned you in the meeting.",
-        priority: 2,
-        requireInteraction: true
-      });
-
-      // Send to content script in the meeting tab
+      // Only trigger desktop alert notification if this browser is actively capturing a tab
       if (capturingTabId) {
+        chrome.notifications?.create("beckon-alert-" + Date.now(), {
+          type: "basic",
+          iconUrl: chrome.runtime.getURL("icons/icon128.png"),
+          title: `${message.alert.speaker || 'Someone'} called your name!`,
+          message: message.alert.sentence || "Someone just mentioned you in the meeting.",
+          priority: 2,
+          requireInteraction: true
+        });
+
+        // Send to content script in the meeting tab
         chrome.tabs.sendMessage(capturingTabId, {
           type: "DISPLAY_ALERT",
           alert: message.alert
