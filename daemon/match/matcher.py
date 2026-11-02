@@ -17,24 +17,43 @@ class MatchResult:
 
 class NameMatcher:
     GREETINGS_AND_CALLS = {
+        # English
         "hey", "hi", "hello", "so", "okay", "ok", "thanks", "thank",
-        "asking", "ask", "tell", "to", "with", "for", "yo"
+        "asking", "ask", "tell", "to", "with", "for", "yo",
+        # Banglish & Bengali
+        "ei", "arre", "are", "shuno", "suno", "bolchi", "kire", "oi", "dada",
+        "এই", "আরে", "শোনো", "বলছি", "কিরে", "ওই", "দাদা",
+        # Hinglish & Hindi
+        "bhai", "yaar", "arey", "भाई", "यार", "अरे", "सुनो"
     }
     
     ACTION_WORDS = {
+        # English
         "can", "could", "would", "will", "what", "how", "do", "did",
-        "are", "have", "think", "mind", "share", "take", "unmute"
+        "are", "have", "think", "mind", "share", "take", "unmute", "join",
+        # Banglish & Bengali
+        "koro", "bolo", "dekho", "paro", "parbe", "sunte", "paccho", "bolcho",
+        "bolte", "korbe", "ekkhuni", "aacho", "achho",
+        "করো", "বলো", "দেখো", "পারবে", "শুনতে", "পাচ্ছ", "বলছ", "করবে", "এখুনি", "আছ",
+        # Hinglish & Hindi
+        "karo", "batao", "karoge", "kar", "sakte", "kya", "sun", "rahe", "ho", "aao",
+        "करो", "बताओ", "करोगे", "सकते", "क्या", "सुन", "रहे", "हो"
     }
 
     def __init__(self, names: List[str], threshold: float = 0.76):
         self.names = [n.strip() for n in names if n.strip()]
         self.threshold = threshold
         self.clean_names = [self._clean(n) for n in self.names]
-        self.phonetic_keys = [jellyfish.metaphone(n) for n in self.clean_names]
+        # Only compute ASCII metaphone if text is latin; otherwise store empty string
+        self.phonetic_keys = [
+            jellyfish.metaphone(n) if n.isascii() else ""
+            for n in self.clean_names
+        ]
 
     @staticmethod
     def _clean(text: str) -> str:
-        return re.sub(r"[^a-zA-Z0-9\s]", "", text).lower().strip()
+        # Preserve Unicode alphanumeric characters (Bengali, Devanagari, Latin) while stripping punctuation
+        return re.sub(r"[^\w\s]", "", text, flags=re.UNICODE).lower().strip()
 
     def evaluate_text(self, text: str, word_segments: Optional[List[dict]] = None) -> Optional[MatchResult]:
         """
@@ -74,9 +93,9 @@ class NameMatcher:
                     if candidate_str == target_clean:
                         base_score = 1.0
                     else:
-                        # 2. Phonetic match
-                        cand_phonetic = jellyfish.metaphone(candidate_str)
-                        phonetic_hit = bool(cand_phonetic and cand_phonetic == target_phonetic)
+                        # 2. Phonetic match (ASCII only)
+                        cand_phonetic = jellyfish.metaphone(candidate_str) if candidate_str.isascii() else ""
+                        phonetic_hit = bool(cand_phonetic and target_phonetic and cand_phonetic == target_phonetic)
                         
                         # 3. Fuzzy string similarity
                         fuzzy_ratio = fuzz.ratio(candidate_str, target_clean) / 100.0

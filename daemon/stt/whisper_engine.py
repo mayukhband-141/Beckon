@@ -18,6 +18,12 @@ class WhisperEngine:
         self.cpu_threads = cpu_threads
         self.model = None
 
+    BANGLISH_HINGLISH_PROMPT = (
+        "Meeting discussion in Indian English, Banglish, and Hinglish. "
+        "Common phrases: ekkhuni, join koro, sunte paccho, bolo, slide ta dekho, "
+        "unmute koro, thik ache, bolo ki bolcho, suno, haan, nah, please join."
+    )
+
     def load_model(self):
         """Lazy load or explicit load of the faster-whisper model."""
         if self.model is None:
@@ -37,13 +43,13 @@ class WhisperEngine:
         sample_rate: int = 16000,
         hotwords: Optional[str] = None,
         initial_prompt: Optional[str] = None,
-        language: str = "en"
+        language: Optional[str] = None,
+        languages: Optional[List[str]] = None,
     ) -> Tuple[str, List[Dict]]:
         """
         Transcribe an audio buffer (float32, 16kHz).
-        Returns:
-            full_text: str
-            words: list of dicts [{"word": str, "start": float, "end": float, "probability": float}]
+        Supports multilingual auto-detection across targeted languages (e.g. en, bn, hi)
+        and conditions the decoder with Banglish/Hinglish vocabulary to prevent English-only hallucinations.
         """
         if self.model is None:
             self.load_model()
@@ -53,21 +59,43 @@ class WhisperEngine:
         if energy < 0.001:
             return "", []
 
+        # Target language handling: if multiple languages are specified, allow auto-detection
+        target_languages = languages or ["en", "bn", "hi"]
+        selected_lang = language
+        if selected_lang in ("auto", "multilingual", "") or (selected_lang is None and target_languages):
+            selected_lang = None  # None tells Whisper to auto-detect the spoken language
+
+        # Construct decoder prompt with hotwords and Banglish/Hinglish cues
+        prompt_parts = []
+        if hotwords:
+            prompt_parts.append(hotwords)
+        if initial_prompt:
+            prompt_parts.append(initial_prompt)
+        prompt_parts.append(self.BANGLISH_HINGLISH_PROMPT)
+        effective_prompt = " ".join(prompt_parts).strip()
+
         kwargs = {
-            "language": language,
+            "language": selected_lang,
             "beam_size": 2,
             "vad_filter": True,
             "vad_parameters": dict(min_silence_duration_ms=200),
             "word_timestamps": True,
             "condition_on_previous_text": False,
+            "hallucination_silence_threshold": 2.0,
+            "initial_prompt": effective_prompt,
         }
         if hotwords:
             kwargs["hotwords"] = hotwords
-        if initial_prompt:
-            kwargs["initial_prompt"] = initial_prompt
 
         try:
             segments, info = self.model.transcribe(audio_window, **kwargs)
+
+            # If Whisper detected a language outside our target set with low confidence, log it
+            if selected_lang is None and info.language not in target_languages:
+                logger.debug(
+                    "Detected language '%s' (p=%.2f) outside targeted %s",
+                    info.language, info.language_probability, target_languages
+                )
             
             full_text_parts = []
             all_words = []

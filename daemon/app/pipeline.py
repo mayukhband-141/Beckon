@@ -78,6 +78,9 @@ class DetectionPipeline:
 
                     # Quick energy gate: skip heavy STT when room is quiet / silence
                     energy = float(np.mean(np.abs(audio_window))) if len(audio_window) > 0 else 0.0
+                    text = ""
+                    words = []
+
                     if energy < 0.003:
                         # Advance sample counter so silence doesn't accumulate
                         self.last_processed_sample = current_total
@@ -87,12 +90,13 @@ class DetectionPipeline:
                         # Build hotwords from enrolled names
                         names_str = ", ".join(self.config.name_profile.all_names)
 
-                        # 2. Transcribe in threadpool so event loop is not blocked
+                        # 2. Transcribe in threadpool with Banglish & multilingual support
                         text, words = await asyncio.to_thread(
                             self.whisper_engine.transcribe_audio_window,
                             audio_window=audio_window,
                             sample_rate=self.config.sample_rate,
-                            hotwords=names_str
+                            hotwords=names_str,
+                            languages=self.config.languages
                         )
 
                     clean_text = text.strip()

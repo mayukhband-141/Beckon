@@ -16,6 +16,9 @@ def simulate_pipeline_matching():
         ("Hey Alex, what are your thoughts on this design?", True, "Alex"),
         ("I think Alec can take over the next slide.", True, "Alec"),
         ("Aleks, are you able to hear us clearly?", True, "Aleks"),
+        ("Alex ekkhuni join koro", True, "Alex"),
+        ("Ei Alex, sunte paccho?", True, "Alex"),
+        ("Suno Alex, kya bol rahe ho?", True, "Alex"),
         ("Let's proceed with the deployment schedule.", False, None),
         ("We reviewed Alex's notes earlier today.", False, None), # Third-person below direct threshold or lower score
     ]

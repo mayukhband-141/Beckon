@@ -48,5 +48,14 @@ class DaemonConfig:
         "sensitive": 0.65,
     }
 
+    # Multilingual & code-switching support (English, Bengali, Hindi)
+    languages: List[str] = field(
+        default_factory=lambda: [
+            l.strip()
+            for l in os.getenv("BECKON_LANGUAGES", "en, bn, hi").split(",")
+            if l.strip()
+        ]
+    )
+
     name_profile: NameProfile = field(default_factory=NameProfile)
 
