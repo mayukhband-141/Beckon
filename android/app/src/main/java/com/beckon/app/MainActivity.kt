@@ -14,6 +14,7 @@ import android.os.Looper
 import android.provider.Settings
 import android.text.Editable
 import android.text.TextWatcher
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.widget.*
@@ -21,8 +22,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.beckon.app.util.PreferencesManager
+import java.net.ConnectException
 import java.net.InetSocketAddress
 import java.net.Socket
+import java.net.SocketTimeoutException
 
 class MainActivity : AppCompatActivity() {
 
@@ -35,6 +38,12 @@ class MainActivity : AppCompatActivity() {
     private lateinit var dotEngineStatus: View
     private lateinit var tvEngineStatus: TextView
 
+    private lateinit var tvPermNotifications: TextView
+    private lateinit var tvPermMic: TextView
+    private lateinit var tvPermOverlay: TextView
+    private lateinit var tvGrantAllPermissions: TextView
+    private lateinit var btnMiuiPopups: TextView
+
     private lateinit var rbMic: RadioButton
     private lateinit var rbInternal: RadioButton
     private lateinit var btnToggleFloating: Button
@@ -44,29 +53,51 @@ class MainActivity : AppCompatActivity() {
     private var isListening = false
     private var isFloatingShown = false
     private val mainHandler = Handler(Looper.getMainLooper())
+    private var pendingActionAfterPermissions: (() -> Unit)? = null
 
     companion object {
         var instance: MainActivity? = null
             private set
     }
 
+    // --- Sequential Permission Launchers ---
+
+    private val notifPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        updatePermissionsUi()
+        if (granted) {
+            // Step to next: Microphone
+            gateMicPermission()
+        } else {
+            Toast.makeText(this, "Notification permission is recommended for status display.", Toast.LENGTH_SHORT).show()
+            gateMicPermission()
+        }
+    }
+
     private val micPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
+        updatePermissionsUi()
         if (granted) {
-            startAudioService(AudioCaptureService.SOURCE_MIC, null)
+            // Step to next: Overlay
+            gateOverlayPermission()
         } else {
             Toast.makeText(this, "Microphone permission is required to listen.", Toast.LENGTH_SHORT).show()
+            pendingActionAfterPermissions = null
         }
     }
 
     private val overlayPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) {
+        updatePermissionsUi()
         if (checkOverlayPermission()) {
-            startFloatingService()
+            pendingActionAfterPermissions?.invoke()
+            pendingActionAfterPermissions = null
         } else {
             Toast.makeText(this, "Display over other apps permission required for floating pill.", Toast.LENGTH_LONG).show()
+            pendingActionAfterPermissions = null
         }
     }
 
@@ -98,6 +129,7 @@ class MainActivity : AppCompatActivity() {
         isListening = AudioCaptureService.instance != null
         isFloatingShown = FloatingWidgetService.instance != null
         syncButtonStates()
+        updatePermissionsUi()
     }
 
     private fun initViews() {
@@ -107,6 +139,12 @@ class MainActivity : AppCompatActivity() {
         tvPingResult = findViewById(R.id.tvPingResult)
         dotEngineStatus = findViewById(R.id.dotEngineStatus)
         tvEngineStatus = findViewById(R.id.tvEngineStatus)
+
+        tvPermNotifications = findViewById(R.id.tvPermNotifications)
+        tvPermMic = findViewById(R.id.tvPermMic)
+        tvPermOverlay = findViewById(R.id.tvPermOverlay)
+        tvGrantAllPermissions = findViewById(R.id.tvGrantAllPermissions)
+        btnMiuiPopups = findViewById(R.id.btnMiuiPopups)
 
         rbMic = findViewById(R.id.rbMic)
         rbInternal = findViewById(R.id.rbInternal)
@@ -136,6 +174,63 @@ class MainActivity : AppCompatActivity() {
         btnToggleFloating.text = if (isFloatingShown) "Hide Floating Pill" else "Show Floating Pill"
     }
 
+    private fun updatePermissionsUi() {
+        val hasNotif = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
+        val hasMic = ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+        val hasOverlay = checkOverlayPermission()
+
+        tvPermNotifications.text = if (hasNotif) "Notif: Granted" else "Notif: Needed"
+        tvPermNotifications.setTextColor(ContextCompat.getColor(this, if (hasNotif) R.color.accent_green else R.color.accent_red))
+
+        tvPermMic.text = if (hasMic) "Mic: Granted" else "Mic: Needed"
+        tvPermMic.setTextColor(ContextCompat.getColor(this, if (hasMic) R.color.accent_green else R.color.accent_red))
+
+        tvPermOverlay.text = if (hasOverlay) "Overlay: Granted" else "Overlay: Needed"
+        tvPermOverlay.setTextColor(ContextCompat.getColor(this, if (hasOverlay) R.color.accent_green else R.color.accent_red))
+
+        tvGrantAllPermissions.visibility = if (hasNotif && hasMic && hasOverlay) View.GONE else View.VISIBLE
+    }
+
+    // --- Sequential Permission Gate: Notif -> Mic -> Overlay ---
+
+    fun startSequentialPermissionsGate(onCompleted: (() -> Unit)? = null) {
+        pendingActionAfterPermissions = onCompleted
+        gateNotificationPermission()
+    }
+
+    private fun gateNotificationPermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
+                notifPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                return
+            }
+        }
+        gateMicPermission()
+    }
+
+    private fun gateMicPermission() {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+            micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+            return
+        }
+        gateOverlayPermission()
+    }
+
+    private fun gateOverlayPermission() {
+        if (!checkOverlayPermission()) {
+            requestOverlayPermission()
+            return
+        }
+        // All permissions satisfied!
+        updatePermissionsUi()
+        pendingActionAfterPermissions?.invoke()
+        pendingActionAfterPermissions = null
+    }
+
     private fun setupListeners() {
         etServerIp.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) { prefs.serverIp = s.toString().trim() }
@@ -158,9 +253,18 @@ class MainActivity : AppCompatActivity() {
 
         btnTestPing.setOnClickListener { pingDaemon() }
 
+        tvGrantAllPermissions.setOnClickListener {
+            startSequentialPermissionsGate()
+        }
+
+        btnMiuiPopups.setOnClickListener {
+            openMiuiPermissions(this)
+        }
+
         btnToggleFloating.setOnClickListener {
             if (!isFloatingShown) {
                 if (!checkOverlayPermission()) {
+                    pendingActionAfterPermissions = { startFloatingService() }
                     requestOverlayPermission()
                 } else {
                     startFloatingService()
@@ -170,23 +274,21 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Long press on floating button opens App Info (crucial for Xiaomi / HyperOS Other Permissions)
         btnToggleFloating.setOnLongClickListener {
-            try {
-                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
-                    data = Uri.parse("package:$packageName")
-                }
-                startActivity(intent)
-                Toast.makeText(this, "Enable 'Display pop-up windows while running in background' if on Xiaomi", Toast.LENGTH_LONG).show()
-            } catch (_: Exception) {}
+            openMiuiPermissions(this)
             true
         }
 
         btnStartListening.setOnClickListener {
-            if (!isListening) initiateListening() else stopListening()
+            if (!isListening) {
+                initiateListening()
+            } else {
+                stopListening()
+            }
         }
     }
 
+    // --- Ping via raw TCP socket with detailed diagnostics ---
     private fun pingDaemon() {
         tvPingResult.text = "pinging..."
         updateConnectionStatus(false)
@@ -197,17 +299,29 @@ class MainActivity : AppCompatActivity() {
         val port = parts.getOrElse(1) { "8765" }.toIntOrNull() ?: 8765
 
         Thread {
-            val reachable = try {
+            try {
                 Socket().use { socket ->
-                    socket.connect(InetSocketAddress(host, port), 3000)
-                    true
+                    socket.connect(InetSocketAddress(host, port), 4000)
                 }
-            } catch (_: Exception) {
-                false
-            }
-            mainHandler.post {
-                updateConnectionStatus(reachable)
-                tvPingResult.text = if (reachable) "connected to $hostPort" else "offline — daemon not reachable"
+                mainHandler.post {
+                    updateConnectionStatus(true)
+                    tvPingResult.text = "connected to $hostPort"
+                }
+            } catch (e: SocketTimeoutException) {
+                mainHandler.post {
+                    updateConnectionStatus(false)
+                    tvPingResult.text = "offline (timeout: check PC firewall/Wi-Fi)"
+                }
+            } catch (e: ConnectException) {
+                mainHandler.post {
+                    updateConnectionStatus(false)
+                    tvPingResult.text = "offline (connection refused: is daemon running?)"
+                }
+            } catch (e: Exception) {
+                mainHandler.post {
+                    updateConnectionStatus(false)
+                    tvPingResult.text = "offline (${e.javaClass.simpleName}: ${e.message})"
+                }
             }
         }.start()
     }
@@ -240,6 +354,31 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun openMiuiPermissions(context: Context) {
+        try {
+            val intent = Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+                setClassName("com.miui.securitycenter", "com.miui.permcenter.permissions.PermissionsEditorActivity")
+                putExtra("extra_pkgname", context.packageName)
+            }
+            context.startActivity(intent)
+            Toast.makeText(context, "Allow 'Display pop-up windows while running in background'", Toast.LENGTH_LONG).show()
+        } catch (_: Exception) {
+            try {
+                val intent = Intent("miui.intent.action.APP_PERM_EDITOR").apply {
+                    putExtra("extra_pkgname", context.packageName)
+                }
+                context.startActivity(intent)
+                Toast.makeText(context, "Allow 'Display pop-up windows while running in background'", Toast.LENGTH_LONG).show()
+            } catch (_: Exception) {
+                val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                    data = Uri.parse("package:${context.packageName}")
+                }
+                context.startActivity(intent)
+                Toast.makeText(context, "Tap Other Permissions -> Display pop-up windows", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
+
     private fun startFloatingService() {
         try {
             val intent = Intent(this, FloatingWidgetService::class.java)
@@ -252,7 +391,7 @@ class MainActivity : AppCompatActivity() {
             btnToggleFloating.text = "Hide Floating Pill"
             Toast.makeText(this, "Floating pill docked on right edge", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "Could not start floating service: ${e.message}", Toast.LENGTH_SHORT).show()
+            onServiceError("Could not start floating service: ${e.message}")
         }
     }
 
@@ -269,10 +408,13 @@ class MainActivity : AppCompatActivity() {
             val projectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
             mediaProjectionLauncher.launch(projectionManager.createScreenCaptureIntent())
         } else {
+            // Sequential check: if mic or notif missing, start sequence, then launch audio service
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                 startAudioService(AudioCaptureService.SOURCE_MIC, null)
             } else {
-                micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                startSequentialPermissionsGate {
+                    startAudioService(AudioCaptureService.SOURCE_MIC, null)
+                }
             }
         }
     }

@@ -68,7 +68,9 @@ class FloatingWidgetService : Service() {
 
         startForegroundNotification()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !Settings.canDrawOverlays(this)) {
+        val canDraw = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) Settings.canDrawOverlays(this) else true
+        Log.i("FloatingWidget", "canDrawOverlays: $canDraw")
+        if (!canDraw) {
             Log.e("FloatingWidget", "Overlay permission not granted — stopping service")
             stopSelf()
             return
@@ -77,7 +79,6 @@ class FloatingWidgetService : Service() {
         windowManager = getSystemService(Context.WINDOW_SERVICE) as WindowManager
         try {
             initFloatingView()
-            Log.d("FloatingWidget", "Floating widget added to WindowManager successfully")
         } catch (e: Exception) {
             Log.e("FloatingWidget", "Failed to init floating view", e)
             stopSelf()
@@ -89,7 +90,7 @@ class FloatingWidgetService : Service() {
             val channel = NotificationChannel(
                 CHANNEL_ID,
                 "Beckon Floating Widget",
-                NotificationManager.IMPORTANCE_MIN
+                NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Keeps Beckon floating pill docked"
                 setShowBadge(false)
@@ -102,7 +103,7 @@ class FloatingWidgetService : Service() {
             .setContentTitle("Beckon floating pill is active")
             .setContentText("Docked on your screen.")
             .setSmallIcon(R.drawable.ic_notification)
-            .setPriority(NotificationCompat.PRIORITY_MIN)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
             .build()
 
@@ -163,7 +164,15 @@ class FloatingWidgetService : Service() {
             y = initialY
         }
 
-        windowManager.addView(floatingView, params)
+        Log.i("FloatingWidget", "Calling windowManager.addView on thread ${Thread.currentThread().name} (x=$initialX, y=$initialY)")
+        try {
+            windowManager.addView(floatingView, params)
+            Log.i("FloatingWidget", "windowManager.addView successfully attached view")
+        } catch (e: Exception) {
+            Log.e("FloatingWidget", "windowManager.addView threw exception", e)
+            stopSelf()
+            return
+        }
         setupDragBehavior(screenWidth, screenHeight)
         setupClickListeners()
     }
