@@ -1,4 +1,4 @@
-# Beckon ⚡
+# Beckon : laze around or work on something while we are on guard to notice the BECKONING
 
 > On-device background meeting assistant that detects when your name is called in Google Meet, alerts you instantly, tells you who called you, and shows what was just asked.
 
