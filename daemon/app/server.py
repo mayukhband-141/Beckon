@@ -115,7 +115,13 @@ class BeckonServer:
             self.connected_clients.discard(websocket)
 
     def process_http_request(self, connection, request):
-        """Intercept HTTP health/ping probes cleanly without throwing WebSocket handshake errors."""
+        """Intercept plain HTTP health/ping probes cleanly without breaking WebSocket handshakes."""
+        upgrade_header = request.headers.get("Upgrade", "").lower()
+        if "websocket" in upgrade_header:
+            # Let WebSocket connection proceed with handshake
+            return None
+
+        # Only intercept non-WebSocket plain HTTP GET requests (e.g. socket pings)
         if request.path in ("/", "/ping", "/health"):
             return connection.respond(http.HTTPStatus.OK, "OK\n")
         return None
