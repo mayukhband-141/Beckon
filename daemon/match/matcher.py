@@ -55,6 +55,19 @@ class NameMatcher:
         # Preserve Unicode alphanumeric characters (Bengali, Devanagari, Latin) while stripping punctuation
         return re.sub(r"[^\w\s]", "", text, flags=re.UNICODE).lower().strip()
 
+    @staticmethod
+    def _extract_context_clause(text: str, detected_word: str) -> str:
+        """Extract only the specific sentence/clause containing the detected name."""
+        sentences = re.split(r'(?<=[.!?।\n])\s+', text.strip())
+        clean_target = re.sub(r'[^\w\s]', '', detected_word, flags=re.UNICODE).lower()
+
+        for s in sentences:
+            clean_s = re.sub(r'[^\w\s]', '', s, flags=re.UNICODE).lower()
+            if clean_target in clean_s.split():
+                return s.strip()
+
+        return sentences[-1].strip() if sentences else text.strip()
+
     def evaluate_text(self, text: str, word_segments: Optional[List[dict]] = None) -> Optional[MatchResult]:
         """
         Evaluates a segment of transcribed text (and optional word-level timestamps)
@@ -147,7 +160,7 @@ class NameMatcher:
                             detected_phrase=candidate_str,
                             target_name=target,
                             score=round(final_score, 3),
-                            context_sentence=text,
+                            context_sentence=self._extract_context_clause(text, candidate_str),
                             cue_boost=round(cue_boost, 3),
                             start_time=start_t,
                             end_time=end_t

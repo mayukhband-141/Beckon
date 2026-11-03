@@ -23,6 +23,8 @@ class WhisperEngine:
         "Common phrases: ekkhuni, join koro, sunte paccho, bolo, slide ta dekho, "
         "unmute koro, thik ache, bolo ki bolcho, suno, haan, nah, please join."
     )
+    BENGALI_PROMPT = "মিটিং আলোচনা: ময়ূখ, শুনতে পাচ্ছ, এখুনি জয়েন করো, বলো, স্লাইড দেখো, আনমিউট করো।"
+    HINDI_PROMPT = "मीटिंग चर्चा: मयूख, सुन रहे हो, बोलो, स्लाइड देखो, ज्वाइन करो, अनम्यूट करो।"
 
     def load_model(self):
         """Lazy load or explicit load of the faster-whisper model."""
@@ -36,6 +38,13 @@ class WhisperEngine:
                 cpu_threads=self.cpu_threads
             )
             logger.info("faster-whisper model successfully loaded.")
+
+    @staticmethod
+    def _clean_repeated_tokens(text: str) -> str:
+        """Collapse repetitive autoregressive token loops like 'Mayukh, mayukh, mayukh' -> 'Mayukh'."""
+        import re
+        pattern = r'\b(\w+)(?:[,\s]+\1\b)+'
+        return re.sub(pattern, r'\1', text, flags=re.IGNORECASE).strip()
 
     def transcribe_audio_window(
         self,
@@ -83,13 +92,20 @@ class WhisperEngine:
                 logger.warning("Language detection error: %s. Defaulting to '%s'", e, target_languages[0])
                 selected_lang = target_languages[0]
 
-        # Construct decoder prompt with hotwords and Banglish/Hinglish cues
+        # Construct script-aligned decoder prompt to avoid cross-script phonetic scrambling
         prompt_parts = []
         if hotwords:
             prompt_parts.append(hotwords)
         if initial_prompt:
             prompt_parts.append(initial_prompt)
-        prompt_parts.append(self.BANGLISH_HINGLISH_PROMPT)
+
+        if selected_lang == "bn":
+            prompt_parts.append(self.BENGALI_PROMPT)
+        elif selected_lang == "hi":
+            prompt_parts.append(self.HINDI_PROMPT)
+        else:
+            prompt_parts.append(self.BANGLISH_HINGLISH_PROMPT)
+
         effective_prompt = " ".join(prompt_parts).strip()
 
         kwargs = {
@@ -99,6 +115,9 @@ class WhisperEngine:
             "vad_parameters": dict(min_silence_duration_ms=200),
             "word_timestamps": True,
             "condition_on_previous_text": False,
+            "repetition_penalty": 1.25,
+            "no_repeat_ngram_size": 3,
+            "compression_ratio_threshold": 2.4,
             "hallucination_silence_threshold": 2.0,
             "initial_prompt": effective_prompt,
         }
@@ -129,7 +148,7 @@ class WhisperEngine:
                             "probability": getattr(w, "probability", 1.0)
                         })
             
-            full_text = " ".join(full_text_parts).strip()
+            full_text = self._clean_repeated_tokens(" ".join(full_text_parts))
             return full_text, all_words
         except Exception as e:
             logger.error(f"Whisper transcription error: {e}", exc_info=True)
