@@ -13,6 +13,8 @@ class PreferencesManager(context: Context) {
         private const val KEY_TARGET_NAMES = "target_names"
         private const val KEY_AUDIO_SOURCE = "audio_source"
         private const val KEY_ALERTS_LOG = "alerts_log"
+        private const val KEY_GROQ_API_KEY = "groq_api_key"
+        private const val KEY_OLLAMA_URL = "ollama_url"
         private const val DEFAULT_SERVER_IP = "192.168.1.100:8765"
         private const val DEFAULT_NAMES = "Alex"
     }
@@ -28,6 +30,14 @@ class PreferencesManager(context: Context) {
     var audioSource: String
         get() = prefs.getString(KEY_AUDIO_SOURCE, "mic") ?: "mic"
         set(value) = prefs.edit().putString(KEY_AUDIO_SOURCE, value).apply()
+
+    var groqApiKey: String
+        get() = prefs.getString(KEY_GROQ_API_KEY, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_GROQ_API_KEY, value).apply()
+
+    var ollamaUrl: String
+        get() = prefs.getString(KEY_OLLAMA_URL, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_OLLAMA_URL, value).apply()
 
     fun addAlert(speaker: String, sentence: String, score: Double) {
         val list = getAlerts().toMutableList()

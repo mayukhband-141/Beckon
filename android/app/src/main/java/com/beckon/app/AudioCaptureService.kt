@@ -241,7 +241,7 @@ class AudioCaptureService : Service() {
         )
         streamer?.connect()
         if (names.isNotEmpty()) {
-            streamer?.updateTargetNames(names[0], names.drop(1))
+            streamer?.updateTargetNames(names[0], names.drop(1), prefs.groqApiKey)
         }
 
         val sampleRate = 16000
@@ -315,7 +315,15 @@ class AudioCaptureService : Service() {
 
     fun updateNames(canonicalName: String, aliases: List<String>) {
         prefs.targetNames = if (aliases.isNotEmpty()) "$canonicalName, ${aliases.joinToString(", ")}" else canonicalName
-        streamer?.updateTargetNames(canonicalName, aliases)
+        streamer?.updateTargetNames(canonicalName, aliases, prefs.groqApiKey)
+    }
+
+    fun updateGroqApiKey(key: String) {
+        prefs.groqApiKey = key
+        val names = prefs.targetNames.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        if (names.isNotEmpty()) {
+            streamer?.updateTargetNames(names[0], names.drop(1), key)
+        }
     }
 
     private fun stopAudioCapture() {

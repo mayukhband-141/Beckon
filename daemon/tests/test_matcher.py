@@ -34,10 +34,30 @@ def test_unrelated_sentence():
     res = matcher.evaluate_text("Let's look at the quarterly financial results from last week.")
     assert res is None
 
+def test_word_confidence_filtering():
+    matcher = NameMatcher(["Alex"], threshold=0.76, min_word_confidence=0.40)
+    # High confidence -> passes
+    words_high = [
+        {"word": "Hey", "probability": 0.95},
+        {"word": "Alex", "probability": 0.88}
+    ]
+    res_high = matcher.evaluate_text("Hey Alex", word_segments=words_high)
+    assert res_high is not None
+    assert res_high.matched is True
+
+    # Low confidence hallucination -> rejected
+    words_low = [
+        {"word": "Hey", "probability": 0.95},
+        {"word": "Alex", "probability": 0.22}
+    ]
+    res_low = matcher.evaluate_text("Hey Alex", word_segments=words_low)
+    assert res_low is None
+
 if __name__ == "__main__":
     test_exact_match()
     test_phonetic_variant_match()
     test_context_cues()
     test_unrelated_sentence()
+    test_word_confidence_filtering()
     print("All NameMatcher unit tests passed!")
 

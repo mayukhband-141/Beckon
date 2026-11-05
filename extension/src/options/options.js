@@ -13,6 +13,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const soundAlertCheckbox = document.getElementById("sound-alert");
   const chimeVolumeSlider = document.getElementById("chime-volume");
   const volLabel = document.getElementById("vol-label");
+  const groqKeyInput = document.getElementById("groq-api-key");
+  const ollamaUrlInput = document.getElementById("ollama-url");
   const saveBtn = document.getElementById("save-btn");
   const statusMsg = document.getElementById("status-msg");
 
@@ -34,7 +36,9 @@ document.addEventListener("DOMContentLoaded", () => {
     "aliases",
     "sensitivity",
     "sound_alert_enabled",
-    "chime_volume"
+    "chime_volume",
+    "groq_api_key",
+    "ollama_url"
   ], (data) => {
     if (data.canonical_name) nameInput.value = data.canonical_name;
     if (data.aliases) {
@@ -46,6 +50,8 @@ document.addEventListener("DOMContentLoaded", () => {
       chimeVolumeSlider.value = data.chime_volume;
       volLabel.textContent = Math.round(data.chime_volume * 100) + "%";
     }
+    if (data.groq_api_key && groqKeyInput) groqKeyInput.value = data.groq_api_key;
+    if (data.ollama_url && ollamaUrlInput) ollamaUrlInput.value = data.ollama_url;
   });
 
   chimeVolumeSlider.addEventListener("input", () => {
@@ -62,13 +68,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const sensitivity = sensitivitySelect.value;
     const sound_alert_enabled = soundAlertCheckbox.checked;
     const chime_volume = parseFloat(chimeVolumeSlider.value);
+    const groq_api_key = groqKeyInput ? groqKeyInput.value.trim() : "";
+    const ollama_url = ollamaUrlInput ? ollamaUrlInput.value.trim() : "";
 
     chrome.storage.local.set({
       canonical_name,
       aliases,
       sensitivity,
       sound_alert_enabled,
-      chime_volume
+      chime_volume,
+      groq_api_key,
+      ollama_url
     }, () => {
       // Broadcast config to daemon & background
       chrome.runtime.sendMessage({
@@ -76,7 +86,9 @@ document.addEventListener("DOMContentLoaded", () => {
         config: {
           canonical_name,
           aliases,
-          sensitivity
+          sensitivity,
+          groq_api_key,
+          ollama_url
         }
       });
 

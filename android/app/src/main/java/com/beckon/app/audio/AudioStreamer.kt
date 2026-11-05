@@ -60,11 +60,14 @@ class AudioStreamer(
         webSocket?.send(byteString)
     }
 
-    fun updateTargetNames(canonicalName: String, aliases: List<String>) {
+    fun updateTargetNames(canonicalName: String, aliases: List<String>, groqApiKey: String = "") {
         val json = JSONObject().apply {
             put("type", "config_update")
             put("canonical_name", canonicalName)
             put("aliases", org.json.JSONArray(aliases))
+            if (groqApiKey.isNotBlank()) {
+                put("groq_api_key", groqApiKey)
+            }
         }
         webSocket?.send(json.toString())
     }

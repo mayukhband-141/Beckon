@@ -214,6 +214,25 @@
 
     <div class="panel">
       <div class="panel-header">
+        <span>AI Catch-Up Summaries</span>
+        <span style="font-size: 10.5sp; color: #10b981; font-family: ui-monospace, monospace; font-size: 11px;">OPTIONAL</span>
+      </div>
+      
+      <div class="field">
+        <label for="groq-api-key">Groq API Key</label>
+        <input type="password" id="groq-api-key" placeholder="gsk_..." autocomplete="off">
+        <div class="hint">Condenses raw transcripts into a 1-sentence alert notification using Llama 3.1 8B (~300ms, free at console.groq.com). Zero audio leaves your machine.</div>
+      </div>
+
+      <div class="field">
+        <label for="ollama-url">Local Ollama Endpoint (Offline Alternative)</label>
+        <input type="text" id="ollama-url" placeholder="http://localhost:11434">
+        <div class="hint">Leave empty if using Groq or if you do not use Ollama.</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
         <span>Microphone Test</span>
         <button id="mic-toggle-btn" class="btn btn-secondary">Start Mic Test</button>
       </div>

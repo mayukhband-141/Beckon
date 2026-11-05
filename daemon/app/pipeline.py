@@ -1,13 +1,16 @@
 import time
 import asyncio
 import logging
-from typing import Callable, Optional
+from collections import deque
+from typing import Callable, Optional, Dict
 import numpy as np
+from rapidfuzz import fuzz
 from daemon.app.config import DaemonConfig
 from daemon.app.ring_buffer import AudioRingBuffer
 from daemon.match.matcher import NameMatcher
 from daemon.stt.whisper_engine import WhisperEngine
 from daemon.speaker.tracker import SpeakerTracker
+from daemon.summary.catchup import CatchUpSummarizer
 
 logger = logging.getLogger("beckon.pipeline")
 
@@ -36,13 +39,23 @@ class DetectionPipeline:
         threshold = config.thresholds.get(config.name_profile.sensitivity, 0.76)
         self.name_matcher = NameMatcher(
             names=config.name_profile.all_names,
-            threshold=threshold
+            threshold=threshold,
+            min_word_confidence=config.min_word_confidence
+        )
+
+        self.summarizer = CatchUpSummarizer(
+            groq_api_key=config.groq_api_key,
+            ollama_url=config.ollama_url,
+            model=config.summary_model,
+            timeout_sec=2.0
         )
         
         self.is_running = False
-        self.last_alert_time = 0.0
+        self.last_alert_times: Dict[str, float] = {}
+        self.last_global_alert_time: float = 0.0
         self.last_processed_sample = 0
-        self.processed_texts = set()
+        self.recent_alert_sentences = deque(maxlen=20)
+        self.processed_texts = deque(maxlen=50)
 
     def update_name_profile(self, canonical_name: str, aliases: list, sensitivity: str):
         self.config.name_profile.canonical_name = canonical_name
@@ -52,7 +65,8 @@ class DetectionPipeline:
         threshold = self.config.thresholds.get(sensitivity, 0.76)
         self.name_matcher = NameMatcher(
             names=self.config.name_profile.all_names,
-            threshold=threshold
+            threshold=threshold,
+            min_word_confidence=self.config.min_word_confidence
         )
         logger.info(f"Updated NameMatcher: names={self.config.name_profile.all_names}, threshold={threshold}")
 
@@ -87,8 +101,8 @@ class DetectionPipeline:
                     else:
                         self.last_processed_sample = current_total
 
-                        # Build hotwords from enrolled names
-                        names_str = ", ".join(self.config.name_profile.all_names)
+                        # Build hotwords from enrolled names (if dynamically registered by client)
+                        names_str = ", ".join(self.config.name_profile.all_names) if self.config.name_profile.all_names else None
 
                         # 2. Transcribe in threadpool with Banglish & multilingual support
                         text, words = await asyncio.to_thread(
@@ -102,10 +116,7 @@ class DetectionPipeline:
                     clean_text = text.strip()
                     if clean_text and clean_text not in self.processed_texts:
                         logger.info(f"[Heard]: \"{clean_text}\"")
-                        # Keep a small set to prevent identical consecutive duplicate checks
-                        self.processed_texts.add(clean_text)
-                        if len(self.processed_texts) > 50:
-                            self.processed_texts.pop()
+                        self.processed_texts.append(clean_text)
 
                         current_speaker = self.speaker_tracker.get_current_speaker()
                         self.ring_buffer.add_transcript(clean_text, current_speaker)
@@ -121,22 +132,49 @@ class DetectionPipeline:
                         # 3. Name matching
                         match = self.name_matcher.evaluate_text(clean_text, words)
                         now = time.time()
-                        if match and (now - self.last_alert_time >= self.config.cooldown_sec):
-                            self.last_alert_time = now
-                            alert_event = {
-                                "type": "alert",
-                                "name": match.target_name,
-                                "detected_phrase": match.detected_phrase,
-                                "speaker": current_speaker,
-                                "score": match.score,
-                                "cue_boost": match.cue_boost,
-                                "sentence": match.context_sentence,
-                                "rolling_transcript": self.ring_buffer.get_recent_transcript_context(45.0),
-                                "timestamp": now
-                            }
-                            logger.info(f"*** NAME DETECTED ***: {alert_event}")
-                            if self.on_alert_callback:
-                                await self.on_alert_callback(alert_event)
+                        if match:
+                            target_key = match.target_name.lower().strip()
+                            last_name_time = self.last_alert_times.get(target_key, 0.0)
+                            context_clause = match.context_sentence.strip()
+
+                            # Prevent re-alerting on the identical clause across overlapping sliding windows
+                            is_duplicate_sentence = any(
+                                fuzz.ratio(context_clause.lower(), prev.lower()) > 85
+                                for prev in self.recent_alert_sentences
+                            )
+
+                            if (
+                                (now - last_name_time >= self.config.cooldown_sec)
+                                and (now - self.last_global_alert_time >= 2.0)
+                                and not is_duplicate_sentence
+                            ):
+                                self.last_alert_times[target_key] = now
+                                self.last_global_alert_time = now
+                                self.recent_alert_sentences.append(context_clause)
+
+                                # Tier 3: LLM Catch-Up Summarization (Groq or Ollama, with instant fallback)
+                                summary_sentence = await self.summarizer.async_summarize(
+                                    target_name=match.target_name,
+                                    snippet=context_clause,
+                                    full_context=self.ring_buffer.get_recent_transcript_context(30.0)
+                                )
+
+                                alert_event = {
+                                    "type": "alert",
+                                    "name": match.target_name,
+                                    "detected_phrase": match.detected_phrase,
+                                    "speaker": current_speaker,
+                                    "score": match.score,
+                                    "cue_boost": match.cue_boost,
+                                    "word_confidence": match.word_confidence,
+                                    "sentence": summary_sentence,
+                                    "raw_sentence": context_clause,
+                                    "rolling_transcript": self.ring_buffer.get_recent_transcript_context(45.0),
+                                    "timestamp": now
+                                }
+                                logger.info(f"*** NAME DETECTED ***: {alert_event}")
+                                if self.on_alert_callback:
+                                    await self.on_alert_callback(alert_event)
 
             except Exception as e:
                 logger.error(f"Error in pipeline cycle: {e}", exc_info=True)

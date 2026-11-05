@@ -60,7 +60,9 @@ class BeckonServer:
                 "sample_rate": self.config.sample_rate,
                 "names": self.config.name_profile.all_names,
                 "sensitivity": self.config.name_profile.sensitivity,
-                "model": self.config.whisper_model
+                "model": self.config.whisper_model,
+                "groq_enabled": self.pipeline.summarizer.is_enabled,
+                "languages": self.config.languages
             }))
 
             async for message in websocket:
@@ -83,7 +85,22 @@ class BeckonServer:
                             aliases = data.get("aliases", self.config.name_profile.aliases)
                             sensitivity = data.get("sensitivity", self.config.name_profile.sensitivity)
                             self.pipeline.update_name_profile(canonical_name, aliases, sensitivity)
-                            await websocket.send(json.dumps({"type": "config_ack", "status": "ok"}))
+
+                            if "groq_api_key" in data:
+                                self.config.groq_api_key = str(data["groq_api_key"]).strip()
+                                self.pipeline.summarizer.groq_api_key = self.config.groq_api_key
+                                logger.info("Updated Groq API Key from client UI (enabled=%s)", self.pipeline.summarizer.is_enabled)
+
+                            if "ollama_url" in data:
+                                self.config.ollama_url = str(data["ollama_url"]).strip()
+                                self.pipeline.summarizer.ollama_url = self.config.ollama_url
+                                logger.info("Updated Ollama URL from client UI (enabled=%s)", self.pipeline.summarizer.is_enabled)
+
+                            await websocket.send(json.dumps({
+                                "type": "config_ack",
+                                "status": "ok",
+                                "groq_enabled": self.pipeline.summarizer.is_enabled
+                            }))
 
                         elif msg_type == "ping":
                             await websocket.send(json.dumps({

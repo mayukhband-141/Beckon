@@ -628,6 +628,81 @@
                     </LinearLayout>
                 </com.google.android.material.card.MaterialCardView>
 
+                <!-- AI Catch-Up Summaries Card -->
+                <com.google.android.material.card.MaterialCardView
+                    android:id="@+id/cardSummarizer"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="16dp"
+                    app:cardBackgroundColor="@color/bg_card"
+                    app:cardCornerRadius="10dp"
+                    app:cardElevation="0dp"
+                    app:strokeColor="@color/border_subtle"
+                    app:strokeWidth="1dp">
+
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:padding="16dp">
+
+                        <RelativeLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:fontFamily="sans-serif-medium"
+                                android:text="AI Catch-Up Summaries"
+                                android:textColor="@color/text_primary"
+                                android:textSize="13.5sp" />
+
+                            <TextView
+                                android:id="@+id/tvGroqStatusTag"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_alignParentEnd="true"
+                                android:background="@drawable/bg_chip_tag"
+                                android:fontFamily="monospace"
+                                android:paddingStart="7dp"
+                                android:paddingTop="2dp"
+                                android:paddingEnd="7dp"
+                                android:paddingBottom="2dp"
+                                android:text="TIER 3"
+                                android:textColor="@color/accent_green"
+                                android:textSize="10sp" />
+                        </RelativeLayout>
+
+                        <EditText
+                            android:id="@+id/etGroqApiKey"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="10dp"
+                            android:background="@drawable/bg_input_field"
+                            android:fontFamily="monospace"
+                            android:hint="Groq API Key (gsk_...)"
+                            android:importantForAutofill="no"
+                            android:inputType="textPassword"
+                            android:paddingStart="12dp"
+                            android:paddingTop="10dp"
+                            android:paddingEnd="12dp"
+                            android:paddingBottom="10dp"
+                            android:textColor="@color/text_primary"
+                            android:textColorHint="@color/text_tertiary"
+                            android:textSize="12.5sp" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:fontFamily="sans-serif"
+                            android:text="ⓘ Optional. Condenses context into 1 clean sentence in notifications (Llama 3.1 8B, free tier). Audio stays local."
+                            android:textColor="@color/text_tertiary"
+                            android:textSize="11sp" />
+                    </LinearLayout>
+                </com.google.android.material.card.MaterialCardView>
+
                 <!-- 2. Audio Capture Stream Card -->
                 <com.google.android.material.card.MaterialCardView
                     android:layout_width="match_parent"

@@ -14,6 +14,22 @@ let cachedConfig = null;
 let cachedSpeaker = null;
 let isCapturing = false;
 
+// Preload persisted config from storage so initial WS connection immediately syncs
+chrome.storage.local.get(["canonical_name", "aliases", "sensitivity", "groq_api_key", "ollama_url"], (data) => {
+  if (data && data.canonical_name) {
+    cachedConfig = {
+      canonical_name: data.canonical_name,
+      aliases: Array.isArray(data.aliases) ? data.aliases : (data.aliases ? data.aliases.split(",").map(s => s.trim()) : []),
+      sensitivity: data.sensitivity || "balanced",
+      groq_api_key: data.groq_api_key || "",
+      ollama_url: data.ollama_url || ""
+    };
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({ type: "config_update", ...cachedConfig }));
+    }
+  }
+});
+
 function connectWebSocket() {
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
     return;

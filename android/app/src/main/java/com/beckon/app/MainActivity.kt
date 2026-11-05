@@ -33,6 +33,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var etTargetNames: EditText
     private lateinit var etServerIp: EditText
+    private lateinit var etGroqApiKey: EditText
     private lateinit var btnTestPing: Button
     private lateinit var tvPingResult: TextView
     private lateinit var dotEngineStatus: View
@@ -153,6 +154,7 @@ class MainActivity : AppCompatActivity() {
     private fun initViews() {
         etTargetNames = findViewById(R.id.etTargetNamesDashboard)
         etServerIp = findViewById(R.id.etServerIp)
+        etGroqApiKey = findViewById(R.id.etGroqApiKey)
         btnTestPing = findViewById(R.id.btnTestPing)
         tvPingResult = findViewById(R.id.tvPingResult)
         dotEngineStatus = findViewById(R.id.dotEngineStatus)
@@ -239,6 +241,7 @@ class MainActivity : AppCompatActivity() {
     private fun loadPreferences() {
         etServerIp.setText(prefs.serverIp)
         etTargetNames.setText(prefs.targetNames)
+        etGroqApiKey.setText(prefs.groqApiKey)
         if (prefs.audioSource == "internal") {
             rbInternal.isChecked = true
         } else {
@@ -334,6 +337,16 @@ class MainActivity : AppCompatActivity() {
     private fun setupListeners() {
         etServerIp.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) { prefs.serverIp = s.toString().trim() }
+            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
+            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
+        })
+
+        etGroqApiKey.addTextChangedListener(object : TextWatcher {
+            override fun afterTextChanged(s: Editable?) {
+                val key = s.toString().trim()
+                prefs.groqApiKey = key
+                AudioCaptureService.instance?.updateGroqApiKey(key)
+            }
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) {}
         })

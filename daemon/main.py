@@ -24,7 +24,10 @@ def main():
     parser.add_argument("--host", default=None, help="Host address to bind (defaults to 127.0.0.1 or BECKON_HOST)")
     parser.add_argument("--lan", action="store_true", help="Bind to 0.0.0.0 to allow companion devices on local network")
     parser.add_argument("--port", type=int, default=8765, help="Port to listen on")
-    parser.add_argument("--model", default="base", help="Whisper model (tiny, base, small)")
+    parser.add_argument("--model", default=None, help="Whisper model (tiny, base, small, medium)")
+    parser.add_argument("--groq-key", default=None, help="Groq API key for catch-up summary notifications")
+    parser.add_argument("--ollama-url", default=None, help="Ollama endpoint URL (e.g. http://localhost:11434)")
+    parser.add_argument("--confidence", type=float, default=None, help="Minimum word confidence (default 0.40)")
     parser.add_argument("--name", default=None, help="Target user's name (defaults to BECKON_TARGET_NAME or 'Alex')")
     parser.add_argument("--aliases", nargs="*", default=None, help="Aliases list")
     parser.add_argument("--languages", nargs="*", default=None, help="Allowed language codes for speech recognition (e.g. --languages en bn hi)")
@@ -34,11 +37,21 @@ def main():
     setup_logging()
     logger = logging.getLogger("beckon.main")
     logger.info("Initializing Beckon Daemon...")
+    from daemon.app.config import LOADED_ENV_PATH
+    if LOADED_ENV_PATH:
+        logger.info("Loaded environment configuration from: %s", LOADED_ENV_PATH)
+    else:
+        logger.info("No .env file found; using system environment and default values.")
 
-    config = DaemonConfig(
-        port=args.port,
-        whisper_model=args.model
-    )
+    config = DaemonConfig(port=args.port)
+    if args.model:
+        config.whisper_model = args.model
+    if args.groq_key:
+        config.groq_api_key = args.groq_key
+    if args.ollama_url:
+        config.ollama_url = args.ollama_url
+    if args.confidence is not None:
+        config.min_word_confidence = args.confidence
 
     if args.languages:
         config.languages = args.languages

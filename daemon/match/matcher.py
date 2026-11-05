@@ -14,6 +14,7 @@ class MatchResult:
     cue_boost: float = 0.0
     start_time: float = 0.0
     end_time: float = 0.0
+    word_confidence: float = 1.0
 
 class NameMatcher:
     GREETINGS_AND_CALLS = {
@@ -40,9 +41,10 @@ class NameMatcher:
         "करो", "बताओ", "करोगे", "सकते", "क्या", "सुन", "रहे", "हो"
     }
 
-    def __init__(self, names: List[str], threshold: float = 0.76):
+    def __init__(self, names: List[str], threshold: float = 0.76, min_word_confidence: float = 0.40):
         self.names = [n.strip() for n in names if n.strip()]
         self.threshold = threshold
+        self.min_word_confidence = min_word_confidence
         self.clean_names = [self._clean(n) for n in self.names]
         # Only compute ASCII metaphone if text is latin; otherwise store empty string
         self.phonetic_keys = [
@@ -99,6 +101,21 @@ class NameMatcher:
                 candidates.append((f"{word} {words_cleaned[i+1]}", [i, i+1]))
 
             for candidate_str, word_indices in candidates:
+                # Word-level confidence filtering (Tier 1)
+                cand_confidence = 1.0
+                if word_segments:
+                    cand_probs = [
+                        word_segments[idx].get("probability", 1.0)
+                        for idx in word_indices
+                        if idx < len(word_segments)
+                    ]
+                    if cand_probs:
+                        min_prob = min(cand_probs)
+                        cand_confidence = sum(cand_probs) / len(cand_probs)
+                        # Reject candidates where Whisper's confidence is too low (noise/hallucination)
+                        if min_prob < self.min_word_confidence:
+                            continue
+
                 for target, target_phonetic in zip(self.names, self.phonetic_keys):
                     target_clean = self._clean(target)
 
@@ -118,6 +135,10 @@ class NameMatcher:
                             base_score = max(0.85, (fuzzy_ratio * 0.5) + 0.45)
                         else:
                             base_score = fuzzy_ratio * 0.90
+
+                    # Soft scale base score if confidence is mediocre
+                    if cand_confidence < 0.65:
+                        base_score *= max(0.75, cand_confidence)
 
                     # 4. Context cues
                     cue_boost = 0.0
@@ -163,7 +184,8 @@ class NameMatcher:
                             context_sentence=self._extract_context_clause(text, candidate_str),
                             cue_boost=round(cue_boost, 3),
                             start_time=start_t,
-                            end_time=end_t
+                            end_time=end_t,
+                            word_confidence=round(cand_confidence, 3)
                         )
 
         return best_match
