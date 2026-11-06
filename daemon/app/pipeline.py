@@ -49,6 +49,16 @@ class DetectionPipeline:
             model=config.summary_model,
             timeout_sec=2.0
         )
+
+        # Tier 4: Fast-path Acoustic Keyword Spotter (KWS)
+        self.kws_engine = None
+        if config.enable_kws:
+            from daemon.kws.engine import AcousticKWSEngine
+            self.kws_engine = AcousticKWSEngine(
+                model_path=config.kws_model_path if config.kws_model_path else None,
+                sample_rate=config.sample_rate,
+                threshold=config.kws_threshold
+            )
         
         self.is_running = False
         self.last_alert_times: Dict[str, float] = {}
@@ -69,6 +79,12 @@ class DetectionPipeline:
             min_word_confidence=self.config.min_word_confidence
         )
         logger.info(f"Updated NameMatcher: names={self.config.name_profile.all_names}, threshold={threshold}")
+
+    def handle_pcm_frame(self, pcm_bytes: bytes) -> Optional[dict]:
+        """Fast-path acoustic processing for streaming audio chunks."""
+        if self.kws_engine:
+            return self.kws_engine.process_pcm16_chunk(pcm_bytes)
+        return None
 
     async def run_loop(self):
         """Asynchronous processing loop for streaming sliding-window audio."""

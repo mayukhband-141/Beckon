@@ -83,6 +83,11 @@ class DaemonConfig:
     whisper_threads: int = 4
     min_word_confidence: float = float(os.getenv("BECKON_MIN_WORD_CONFIDENCE", "0.40"))
     
+    # Tier 4: Acoustic Keyword Spotting (KWS) Fast-Path
+    enable_kws: bool = os.getenv("BECKON_ENABLE_KWS", "true").lower() in ("true", "1", "yes")
+    kws_model_path: str = os.getenv("BECKON_KWS_MODEL_PATH", "")
+    kws_threshold: float = float(os.getenv("BECKON_KWS_THRESHOLD", "0.65"))
+    
     # Catch-up LLM Summary (Tier 3)
     groq_api_key: str = os.getenv("BECKON_GROQ_API_KEY", "")
     ollama_url: str = os.getenv("BECKON_OLLAMA_URL", "")

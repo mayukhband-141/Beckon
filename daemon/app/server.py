@@ -70,6 +70,11 @@ class BeckonServer:
                     # PCM16 16kHz mono audio frame from client
                     self.current_audio_source = websocket
                     self.ring_buffer.append_pcm16_bytes(message)
+
+                    # Tier 4: Fast-path acoustic evaluation
+                    kws_event = self.pipeline.handle_pcm_frame(message)
+                    if kws_event:
+                        logger.debug("Acoustic KWS Fast-Path triggered (Score: %.2f)", kws_event.get("score", 0.0))
                 elif isinstance(message, str):
                     try:
                         data = json.loads(message)
