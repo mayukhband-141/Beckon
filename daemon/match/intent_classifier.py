@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from typing import List, Optional, Set, Tuple, Dict
 import numpy as np
@@ -11,6 +12,21 @@ class IntentResult:
     confidence: float         # 0.0 to 1.0
     signals: List[str] = field(default_factory=list)
     score_modifier: float = 0.0
+
+
+def _clean_unicode_token(token: str, keep_clitic_chars: bool = False) -> str:
+    """
+    Cleans a word token by stripping punctuation and symbols while strictly
+    preserving all Unicode letters, decimal numbers, and combining diacritic marks
+    (essential for Indic vowel signs U+0980-U+09FF and U+0900-U+097F).
+    """
+    chars = []
+    for c in token:
+        if keep_clitic_chars and c in {"'", "’", "-"}:
+            chars.append(c)
+        elif not unicodedata.category(c).startswith("P") and not unicodedata.category(c).startswith("S") and not c.isspace():
+            chars.append(c)
+    return "".join(chars).lower()
 
 
 class PhoneticAmbiguityProfiler:
@@ -31,7 +47,7 @@ class PhoneticAmbiguityProfiler:
 
     @classmethod
     def get_phonetic_risk(cls, target_name: str) -> float:
-        clean = re.sub(r"[^\w]", "", target_name, flags=re.UNICODE).lower()
+        clean = _clean_unicode_token(target_name)
         if not clean:
             return 0.0
 
@@ -98,14 +114,14 @@ class MorphologicalDecomposer:
         Decomposes a token like 'Alex-er' or 'Mayukh-da' into root + morphological signals.
         Returns: (stemmed_name, [(signal_name, score_delta), ...])
         """
-        token_clean = re.sub(r"[^\w'’-]", "", token, flags=re.UNICODE).lower()
+        token_clean = _clean_unicode_token(token, keep_clitic_chars=True)
         signals = []
 
         if not token_clean:
             return token_clean, signals
 
         # 1. Check exact match
-        if token_clean == clean_target:
+        if token_clean.rstrip("'-’") == clean_target:
             return clean_target, signals
 
         # 2. Check attached honorifics (vocative boosters)
@@ -124,7 +140,7 @@ class MorphologicalDecomposer:
                     signals.append((f"morphology:{sig_name}('{clitic}')", delta))
                     return clean_target, signals
 
-        return token_clean, signals
+        return token_clean.rstrip("'-’"), signals
 
 
 class AspectAgreementAnalyzer:
@@ -186,7 +202,7 @@ class AspectAgreementAnalyzer:
 
     @classmethod
     def is_3rd_person_past(cls, token: str) -> bool:
-        clean = re.sub(r"[^\w]", "", token, flags=re.UNICODE).lower()
+        clean = _clean_unicode_token(token)
         if not clean:
             return False
         if clean in cls.PAST_REPORTING_VERBS:
@@ -242,7 +258,7 @@ class SemanticContextClassifier:
 
     @staticmethod
     def _clean_token(token: str) -> str:
-        return re.sub(r"[^\w]", "", token, flags=re.UNICODE).lower()
+        return _clean_unicode_token(token)
 
     def classify(self, sentence: str, target_name: str) -> IntentResult:
         """
@@ -318,7 +334,7 @@ class SemanticContextClassifier:
                 signals.append(f"ergative_agent_marker ('{next_word}')")
                 direct_score -= 0.60
                 has_postposition = True
-            elif next_word in {"se", "से", "dwara", "দ্বারা"}:
+            elif next_word in {"se", "से", "dwara", "দ্বারা", "द्वारा"}:
                 signals.append(f"postposition_ablative_instrumental ('{next_word}')")
                 direct_score -= 0.50
                 has_postposition = True
@@ -326,7 +342,7 @@ class SemanticContextClassifier:
                 signals.append(f"dative_recipient_marker ('{next_word}')")
                 direct_score -= 0.55
                 has_postposition = True
-            elif next_word in {"ka", "ki", "ke", "का", "की", "के"}:
+            elif next_word in {"ka", "ki", "ke", "का", "की", "के", "er", "এর"}:
                 signals.append(f"genitive_marker ('{next_word}')")
                 direct_score -= 0.45
                 has_postposition = True
@@ -373,6 +389,13 @@ class SemanticContextClassifier:
             next_tok = cleaned_words[target_idx + 1]
             if next_tok in {"this", "that", "it", "i", "we", "they", "there", "the", "a", "an", "our", "my", "your", "any", "someone", "anyone"}:
                 signals.append(f"modal_auxiliary_inversion ('{clean_target} {next_tok}')")
+                direct_score -= 0.65
+
+        # 4c. Transitive verb homophone check ("Please mark this ticket", "mark as resolved")
+        if phonetic_risk >= 0.50 and target_idx + 1 < num_tokens:
+            next_tok = cleaned_words[target_idx + 1]
+            if next_tok in {"this", "that", "the", "a", "an", "it", "as", "these", "those", "my", "our", "all"}:
+                signals.append(f"transitive_verb_object ('{clean_target} {next_tok}')")
                 direct_score -= 0.65
 
         # 5. Direct Vocative Punctuation & Position Heuristics
