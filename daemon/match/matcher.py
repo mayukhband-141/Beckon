@@ -15,6 +15,8 @@ class MatchResult:
     start_time: float = 0.0
     end_time: float = 0.0
     word_confidence: float = 1.0
+    intent: str = "direct_address"
+    intent_confidence: float = 1.0
 
 class NameMatcher:
     GREETINGS_AND_CALLS = {
@@ -46,6 +48,8 @@ class NameMatcher:
         self.threshold = threshold
         self.min_word_confidence = min_word_confidence
         self.clean_names = [self._clean(n) for n in self.names]
+        from daemon.match.intent_classifier import SemanticContextClassifier
+        self.intent_classifier = SemanticContextClassifier()
         # Only compute ASCII metaphone if text is latin; otherwise store empty string
         self.phonetic_keys = [
             jellyfish.metaphone(n) if n.isascii() else ""
@@ -164,7 +168,15 @@ class NameMatcher:
                     if raw_words[word_indices[-1]].endswith("'s") or raw_words[word_indices[-1]].endswith("’s"):
                         cue_boost -= 0.12
 
-                    final_score = min(1.0, max(0.0, base_score + cue_boost))
+                    context_clause = self._extract_context_clause(text, candidate_str)
+                    intent_res = self.intent_classifier.classify(context_clause, candidate_str)
+
+                    # Tier 4 Phase 2: Semantic Intent Modifier
+                    final_score = min(1.0, max(0.0, base_score + cue_boost + intent_res.score_modifier))
+
+                    # Suppress confirmed casual third-person references
+                    if not intent_res.is_direct_address and final_score < 0.90:
+                        continue
 
                     if final_score >= self.threshold and final_score > highest_score:
                         highest_score = final_score
@@ -181,11 +193,13 @@ class NameMatcher:
                             detected_phrase=candidate_str,
                             target_name=target,
                             score=round(final_score, 3),
-                            context_sentence=self._extract_context_clause(text, candidate_str),
-                            cue_boost=round(cue_boost, 3),
+                            context_sentence=context_clause,
+                            cue_boost=round(cue_boost + intent_res.score_modifier, 3),
                             start_time=start_t,
                             end_time=end_t,
-                            word_confidence=round(cand_confidence, 3)
+                            word_confidence=round(cand_confidence, 3),
+                            intent=intent_res.intent,
+                            intent_confidence=intent_res.confidence
                         )
 
         return best_match
