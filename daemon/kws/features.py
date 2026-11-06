@@ -92,3 +92,4 @@ class LogMelFeatureExtractor:
         # Natural log compression with numerical stability
         log_mel = np.log(np.maximum(mel_energy, 1e-6)).T
         return log_mel.astype(np.float32)
+

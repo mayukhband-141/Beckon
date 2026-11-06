@@ -3,3 +3,4 @@ from daemon.kws.features import LogMelFeatureExtractor
 from daemon.kws.engine import AcousticKWSEngine
 
 __all__ = ["LogMelFeatureExtractor", "AcousticKWSEngine"]
+
