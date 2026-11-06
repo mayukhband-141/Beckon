@@ -52,6 +52,8 @@ class DetectionPipeline:
 
         # Tier 4: Fast-path Acoustic Keyword Spotter (KWS)
         self.kws_engine = None
+        self.wake_event = asyncio.Event()
+        self.kws_fast_track: Optional[dict] = None
         if config.enable_kws:
             from daemon.kws.engine import AcousticKWSEngine
             self.kws_engine = AcousticKWSEngine(
@@ -83,7 +85,11 @@ class DetectionPipeline:
     def handle_pcm_frame(self, pcm_bytes: bytes) -> Optional[dict]:
         """Fast-path acoustic processing for streaming audio chunks."""
         if self.kws_engine:
-            return self.kws_engine.process_pcm16_chunk(pcm_bytes)
+            event = self.kws_engine.process_pcm16_chunk(pcm_bytes)
+            if event:
+                self.kws_fast_track = event
+                self.wake_event.set()
+            return event
         return None
 
     async def run_loop(self):
@@ -99,10 +105,13 @@ class DetectionPipeline:
             try:
                 current_total = self.ring_buffer.total_samples_written
                 new_samples = current_total - self.last_processed_sample
-                min_step_samples = int(self.config.sample_rate * 0.8)  # Require at least 800ms of new audio
+                is_kws_fast_track = bool(self.kws_fast_track)
+                kws_hit_info = self.kws_fast_track
+                min_step_samples = int(self.config.sample_rate * 0.25) if is_kws_fast_track else int(self.config.sample_rate * 0.8)
 
                 # 1. Check if we have received enough samples and new audio has arrived
                 if current_total >= int(self.config.sample_rate * 1.5) and new_samples >= min_step_samples:
+                    self.kws_fast_track = None
                     # Fetch sliding window (e.g. 5.0 seconds)
                     audio_window = self.ring_buffer.get_last_n_seconds(self.config.chunk_window_sec)
 
@@ -183,6 +192,8 @@ class DetectionPipeline:
                                     "score": match.score,
                                     "cue_boost": match.cue_boost,
                                     "word_confidence": match.word_confidence,
+                                    "kws_fast_path": is_kws_fast_track,
+                                    "kws_score": kws_hit_info.get("score") if kws_hit_info else None,
                                     "sentence": summary_sentence,
                                     "raw_sentence": context_clause,
                                     "rolling_transcript": self.ring_buffer.get_recent_transcript_context(45.0),
@@ -197,7 +208,12 @@ class DetectionPipeline:
 
             elapsed = time.time() - start_tick
             sleep_duration = max(0.05, self.config.chunk_hop_sec - elapsed)
-            await asyncio.sleep(sleep_duration)
+            try:
+                await asyncio.wait_for(self.wake_event.wait(), timeout=sleep_duration)
+                self.wake_event.clear()
+                logger.debug("Detection pipeline awakened early by KWS fast-path trigger")
+            except asyncio.TimeoutError:
+                pass
 
     def stop(self):
         self.is_running = False
