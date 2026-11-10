@@ -104,3 +104,4 @@ class SystemAudioLoopback:
         self.is_running = False
         if self._thread and self._thread.is_alive():
             self._thread.join(timeout=1.0)
+

@@ -138,3 +138,4 @@ class AcousticSpeakerIdentifier:
             return best_speaker, round(best_sim, 3)
 
         return None, round(best_sim, 3)
+

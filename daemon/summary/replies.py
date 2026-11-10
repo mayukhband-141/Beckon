@@ -83,3 +83,4 @@ class QuickReplyGenerator:
             "My mic was muted — give me 10 seconds.",
             "Checking the details, will update you shortly."
         ]
+
