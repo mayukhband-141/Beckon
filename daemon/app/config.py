@@ -87,6 +87,9 @@ class DaemonConfig:
     enable_kws: bool = os.getenv("BECKON_ENABLE_KWS", "true").lower() in ("true", "1", "yes")
     kws_model_path: str = os.getenv("BECKON_KWS_MODEL_PATH", "")
     kws_threshold: float = float(os.getenv("BECKON_KWS_THRESHOLD", "0.65"))
+
+    # Tier 5: Desktop Audio Loopback (Zoom, Slack, Teams, Discord)
+    enable_loopback: bool = os.getenv("BECKON_ENABLE_LOOPBACK", "false").lower() in ("true", "1", "yes")
     
     # Catch-up LLM Summary (Tier 3)
     groq_api_key: str = os.getenv("BECKON_GROQ_API_KEY", "")

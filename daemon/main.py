@@ -32,6 +32,7 @@ def main():
     parser.add_argument("--aliases", nargs="*", default=None, help="Aliases list")
     parser.add_argument("--languages", nargs="*", default=None, help="Allowed language codes for speech recognition (e.g. --languages en bn hi)")
     parser.add_argument("--sensitivity", default=None, choices=["strict", "balanced", "sensitive"], help="Sensitivity level")
+    parser.add_argument("--loopback", action="store_true", help="Enable system audio loopback capture for Zoom, Teams, Slack")
     args = parser.parse_args()
 
     setup_logging()
@@ -69,6 +70,8 @@ def main():
         config.name_profile.aliases = args.aliases
     if args.sensitivity:
         config.name_profile.sensitivity = args.sensitivity
+    if args.loopback:
+        config.enable_loopback = True
 
     server = BeckonServer(config=config)
     try:

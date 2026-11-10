@@ -80,6 +80,7 @@
     const scorePct = Math.round((alertData.score || 0.8) * 100);
     const sentence = alertData.sentence || "Your name was called in the meeting.";
     const rollingTranscript = alertData.rolling_transcript || "";
+    const quickReplies = Array.isArray(alertData.quick_replies) ? alertData.quick_replies : [];
 
     card.innerHTML = `
       <div class="beckon-header">
@@ -95,6 +96,16 @@
       <div class="beckon-sentence">
         "${escapeHtml(sentence)}"
       </div>
+      ${quickReplies.length > 0 ? `
+        <div class="beckon-quick-replies">
+          <div class="beckon-quick-reply-label">Quick Replies (Click to Copy)</div>
+          ${quickReplies.map((r, idx) => `
+            <button class="beckon-reply-btn" data-reply="${escapeHtml(r)}">
+              <span>💬 ${escapeHtml(r)}</span>
+            </button>
+          `).join("")}
+        </div>
+      ` : ""}
       ${rollingTranscript ? `
         <button class="beckon-details-toggle">
           <svg class="beckon-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -103,6 +114,31 @@
         <div class="beckon-transcript-box">${escapeHtml(rollingTranscript)}</div>
       ` : ""}
     `;
+
+    // Handle quick reply clicks (Copy & optional paste into Google Meet chat)
+    card.querySelectorAll(".beckon-reply-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const replyText = btn.getAttribute("data-reply");
+        if (replyText) {
+          navigator.clipboard.writeText(replyText).catch(() => {});
+          const originalHtml = btn.innerHTML;
+          btn.classList.add("copied");
+          btn.innerHTML = `<span>✓ Copied to clipboard</span>`;
+          setTimeout(() => {
+            btn.classList.remove("copied");
+            btn.innerHTML = originalHtml;
+          }, 2000);
+
+          // If chat input exists in Google Meet, paste text into it
+          const chatInput = document.querySelector('textarea[aria-label*="chat" i], textarea[placeholder*="message" i]');
+          if (chatInput) {
+            chatInput.value = replyText;
+            chatInput.dispatchEvent(new Event("input", { bubbles: true }));
+            chatInput.focus();
+          }
+        }
+      });
+    });
 
     // Close button
     card.querySelector(".beckon-close-btn").addEventListener("click", () => {

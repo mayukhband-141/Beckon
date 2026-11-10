@@ -11,6 +11,7 @@ from daemon.match.matcher import NameMatcher
 from daemon.stt.whisper_engine import WhisperEngine
 from daemon.speaker.tracker import SpeakerTracker
 from daemon.summary.catchup import CatchUpSummarizer
+from daemon.summary.replies import QuickReplyGenerator
 
 logger = logging.getLogger("beckon.pipeline")
 
@@ -49,6 +50,7 @@ class DetectionPipeline:
             model=config.summary_model,
             timeout_sec=2.0
         )
+        self.reply_generator = QuickReplyGenerator(groq_api_key=config.groq_api_key)
 
         # Tier 4: Fast-path Acoustic Keyword Spotter (KWS)
         self.kws_engine = None
@@ -146,7 +148,9 @@ class DetectionPipeline:
                         logger.info(f"[Heard]: \"{clean_text}\"")
                         self.processed_texts.append(clean_text)
 
-                        current_speaker = self.speaker_tracker.get_current_speaker()
+                        # Passive acoustic voiceprint recognition & enrollment
+                        self.speaker_tracker.observe_audio_frame(audio_window)
+                        current_speaker = self.speaker_tracker.get_current_speaker(audio_window)
                         self.ring_buffer.add_transcript(clean_text, current_speaker)
 
                         if self.on_transcript_callback:
@@ -187,6 +191,13 @@ class DetectionPipeline:
                                     full_context=self.ring_buffer.get_recent_transcript_context(30.0)
                                 )
 
+                                # Tier 5: Contextual Quick-Reply Generation
+                                quick_replies = self.reply_generator.generate_replies(
+                                    target_name=match.target_name,
+                                    sentence=context_clause,
+                                    summary=summary_sentence
+                                )
+
                                 alert_event = {
                                     "type": "alert",
                                     "name": match.target_name,
@@ -199,6 +210,7 @@ class DetectionPipeline:
                                     "kws_score": kws_hit_info.get("score") if kws_hit_info else None,
                                     "sentence": summary_sentence,
                                     "raw_sentence": context_clause,
+                                    "quick_replies": quick_replies,
                                     "rolling_transcript": self.ring_buffer.get_recent_transcript_context(45.0),
                                     "timestamp": now
                                 }

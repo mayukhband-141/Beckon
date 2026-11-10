@@ -36,6 +36,9 @@ jobs:
       - name: Run Dynamic Phoneme DTW Tests
         run: python -m daemon.tests.test_dtw
 
+      - name: Run Tier 5 Advanced Features (Discovery, Voiceprint, Replies, Loopback)
+        run: python -m daemon.tests.test_tier5
+
       - name: Run Morpho-Phonetic Vocative Intent Tests
         run: python -m daemon.tests.test_intent_classifier
 

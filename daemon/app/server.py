@@ -9,6 +9,8 @@ from daemon.app.config import DaemonConfig
 from daemon.app.ring_buffer import AudioRingBuffer
 from daemon.speaker.tracker import SpeakerTracker
 from daemon.app.pipeline import DetectionPipeline
+from daemon.discovery.beacon import UDPDiscoveryBeacon
+from daemon.audio.loopback import SystemAudioLoopback
 
 logger = logging.getLogger("beckon.server")
 
@@ -30,6 +32,22 @@ class BeckonServer:
             on_alert_callback=self.broadcast_alert,
             on_transcript_callback=self.broadcast_transcript
         )
+        self.beacon = UDPDiscoveryBeacon(
+            ws_port=self.config.port,
+            auth_token=self.config.auth_token,
+            service_name="Beckon Daemon"
+        )
+        self.loopback = None
+        if self.config.enable_loopback:
+            self.loopback = SystemAudioLoopback(
+                sample_rate=self.config.sample_rate,
+                on_pcm_callback=self._handle_loopback_pcm
+            )
+
+    def _handle_loopback_pcm(self, pcm_bytes: bytes):
+        """Processes desktop loopback audio directly into ring buffer and fast-path KWS."""
+        self.ring_buffer.append_pcm16_bytes(pcm_bytes)
+        self.pipeline.handle_pcm_frame(pcm_bytes)
 
     async def broadcast_alert(self, alert_data: dict):
         message = json.dumps(alert_data)
@@ -143,14 +161,30 @@ class BeckonServer:
             # Let WebSocket connection proceed with handshake
             return None
 
-        # Only intercept non-WebSocket plain HTTP GET requests (e.g. socket pings)
+        # Intercept plain HTTP pairing and health/ping requests
         if request.path in ("/", "/ping", "/health"):
             remote = getattr(connection, "remote_address", "client")
             logger.info("Probe ping received from %s -> responded HTTP 200 OK", remote)
             return connection.respond(http.HTTPStatus.OK, "OK\n")
+
+        if request.path in ("/pair", "/info", "/status"):
+            remote = getattr(connection, "remote_address", "client")
+            logger.info("Pairing request received from %s -> responded pairing JSON", remote)
+            pairing_json = json.dumps(self.beacon.get_pairing_payload(), indent=2)
+            headers = [
+                ("Content-Type", "application/json"),
+                ("Access-Control-Allow-Origin", "*"),
+                ("Content-Length", str(len(pairing_json)))
+            ]
+            return connection.respond(http.HTTPStatus.OK, pairing_json, headers=headers)
         return None
 
     async def start(self):
+        self.beacon.print_terminal_card()
+        self.beacon.start()
+        if self.loopback:
+            self.loopback.start()
+
         logger.info(f"Starting Beckon Daemon on ws://{self.config.host}:{self.config.port}")
         server = await websockets.serve(
             self.handle_connection,
@@ -160,4 +194,9 @@ class BeckonServer:
             max_size=10 * 1024 * 1024  # 10MB max message size
         )
         pipeline_task = asyncio.create_task(self.pipeline.run_loop())
-        await asyncio.gather(server.wait_closed(), pipeline_task)
+        try:
+            await asyncio.gather(server.wait_closed(), pipeline_task)
+        finally:
+            self.beacon.stop()
+            if self.loopback:
+                self.loopback.stop()
