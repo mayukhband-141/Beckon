@@ -197,3 +197,4 @@ class PhoneticAcousticMapper:
             return np.ones((1, 80), dtype=np.float32) / np.sqrt(80)
 
         return np.vstack(matrices)
+
