@@ -59,7 +59,8 @@ class DetectionPipeline:
             self.kws_engine = AcousticKWSEngine(
                 model_path=config.kws_model_path if config.kws_model_path else None,
                 sample_rate=config.sample_rate,
-                threshold=config.kws_threshold
+                threshold=config.kws_threshold,
+                target_names=config.name_profile.all_names
             )
         
         self.is_running = False
@@ -80,6 +81,8 @@ class DetectionPipeline:
             threshold=threshold,
             min_word_confidence=self.config.min_word_confidence
         )
+        if self.kws_engine:
+            self.kws_engine.update_target_names(self.config.name_profile.all_names)
         logger.info(f"Updated NameMatcher: names={self.config.name_profile.all_names}, threshold={threshold}")
 
     def handle_pcm_frame(self, pcm_bytes: bytes) -> Optional[dict]:

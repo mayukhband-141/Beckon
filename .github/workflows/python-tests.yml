@@ -33,6 +33,9 @@ jobs:
       - name: Run Acoustic Keyword Spotting (KWS) Tests
         run: python -m daemon.tests.test_kws
 
+      - name: Run Dynamic Phoneme DTW Tests
+        run: python -m daemon.tests.test_dtw
+
       - name: Run Morpho-Phonetic Vocative Intent Tests
         run: python -m daemon.tests.test_intent_classifier
 

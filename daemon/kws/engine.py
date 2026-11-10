@@ -1,8 +1,9 @@
 import time
 import logging
-from typing import Optional, Dict, Tuple
+from typing import Optional, Dict, Tuple, List
 import numpy as np
 from daemon.kws.features import LogMelFeatureExtractor
+from daemon.kws.dtw import AcousticDTWScorer
 
 logger = logging.getLogger("beckon.kws")
 
@@ -53,9 +54,13 @@ class NumpyAcousticScorer:
 
 class AcousticKWSEngine:
     """
-    Tier 4 Phase 1: Real-time Acoustic Keyword Spotting (KWS) Engine.
-    Operates directly on 16kHz audio slices in streaming 100ms hops.
-    Supports ONNX Runtime models (e.g. openWakeWord/custom KWS) with instant NumPy fallback.
+    Tier 4 Phase 4: Real-time Acoustic Keyword Spotting (KWS) Engine with
+    Zero-Training Dynamic Acoustic Phoneme DTW Alignment.
+    Operates directly on 16kHz streaming audio in 100ms hops.
+    Combines:
+      1. AcousticDTWScorer (Dynamic Time Warping against user's target phonemes)
+      2. Optional ONNX embedding / wake-word models
+      3. Built-in high-speed NumPy acoustic neural fallback
     """
 
     def __init__(
@@ -66,6 +71,7 @@ class AcousticKWSEngine:
         hop_duration_sec: float = 0.1,
         threshold: float = 0.65,
         cooldown_sec: float = 3.0,
+        target_names: Optional[List[str]] = None,
     ):
         self.sample_rate = sample_rate
         self.window_samples = int(sample_rate * window_duration_sec)
@@ -74,6 +80,7 @@ class AcousticKWSEngine:
         self.cooldown_sec = cooldown_sec
 
         self.feature_extractor = LogMelFeatureExtractor(sample_rate=sample_rate)
+        self.dtw_scorer = AcousticDTWScorer(target_names=target_names)
         self.onnx_session = None
         self.numpy_scorer = None
 
@@ -86,7 +93,7 @@ class AcousticKWSEngine:
                 self.onnx_session = ort.InferenceSession(model_path, sess_options=opts, providers=["CPUExecutionProvider"])
                 logger.info("Loaded ONNX KWS acoustic model from: %s", model_path)
             except Exception as e:
-                logger.warning("Failed to load ONNX model (%s). Falling back to built-in acoustic neural scorer.", e)
+                logger.warning("Failed to load ONNX model (%s). Falling back to dynamic acoustic DTW scorer.", e)
 
         if self.onnx_session is None:
             self.numpy_scorer = NumpyAcousticScorer(in_channels=self.feature_extractor.n_mels)
@@ -96,9 +103,19 @@ class AcousticKWSEngine:
         self.audio_buffer = np.zeros(self.window_samples, dtype=np.float32)
         self.samples_since_last_eval = 0
         self.last_detection_time = 0.0
+        self.last_matched_name: Optional[str] = None
+
+    def update_target_names(self, names: List[str]):
+        """Dynamically re-compiles acoustic phoneme templates for newly enrolled names."""
+        self.dtw_scorer.update_targets(names)
+        logger.debug("Updated dynamic acoustic DTW templates for: %s", names)
 
     def score_audio_window(self, audio_slice: np.ndarray) -> float:
-        """Computes KWS wake-word score for an audio window."""
+        """
+        Computes KWS wake-word score for an audio window.
+        Returns: score: float in [0.0, 1.0]
+        """
+        self.last_matched_name = None
         if len(audio_slice) < self.sample_rate * 0.4:
             return 0.0
 
@@ -109,21 +126,34 @@ class AcousticKWSEngine:
 
         mel = self.feature_extractor.extract(audio_slice)
 
+        # 1. Dynamic Phoneme DTW Alignment
+        dtw_score, matched_name = self.dtw_scorer.score_mel(mel)
+        self.last_matched_name = matched_name
+
+        # 2. ONNX Model Inference (if available)
+        onnx_score = 0.0
         if self.onnx_session is not None:
             try:
-                # Shape: [1, 80, time_steps]
                 input_tensor = np.expand_dims(mel, axis=0)
                 input_name = self.onnx_session.get_inputs()[0].name
                 outputs = self.onnx_session.run(None, {input_name: input_tensor})
-                score = float(outputs[0].squeeze())
-                return score
+                onnx_score = float(outputs[0].squeeze())
             except Exception as e:
-                logger.debug("ONNX inference failed (%s), using fallback", e)
+                logger.debug("ONNX inference failed (%s)", e)
 
+        # 3. Built-in NumPy Scorer
+        numpy_score = 0.0
         if self.numpy_scorer is not None:
-            return self.numpy_scorer.forward(mel)
+            numpy_score = self.numpy_scorer.forward(mel)
 
-        return 0.0
+        # Fuse scores: When dynamic templates are enrolled, DTW leads with 70% weight
+        if self.dtw_scorer.templates:
+            base_score = max(onnx_score, numpy_score)
+            fused = float(np.clip(0.70 * dtw_score + 0.30 * base_score, 0.0, 1.0))
+            return fused
+
+        final_score = max(onnx_score, numpy_score)
+        return final_score
 
     def process_pcm16_chunk(self, pcm_bytes: bytes) -> Optional[Dict]:
         """
@@ -152,6 +182,7 @@ class AcousticKWSEngine:
         if self.samples_since_last_eval >= self.hop_samples:
             self.samples_since_last_eval = 0
             score = self.score_audio_window(self.audio_buffer)
+            matched_name = self.last_matched_name
             now = time.time()
 
             if score >= self.threshold and (now - self.last_detection_time >= self.cooldown_sec):
@@ -159,11 +190,11 @@ class AcousticKWSEngine:
                 event = {
                     "type": "kws_hit",
                     "score": round(score, 3),
+                    "matched_name": matched_name,
                     "timestamp": now,
                     "latency_tier": "fast_path",
                 }
-                logger.info("*** ACOUSTIC KWS HIT *** (Score: %.3f)", score)
+                logger.info("*** ACOUSTIC KWS HIT *** (Score: %.3f, Matched: %s)", score, matched_name)
                 return event
 
         return None
-
