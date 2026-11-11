@@ -43,23 +43,61 @@ class NameMatcher:
         "करो", "बताओ", "करोगे", "सकते", "क्या", "सुन", "रहे", "हो"
     }
 
-    def __init__(self, names: List[str], threshold: float = 0.76, min_word_confidence: float = 0.40):
+    KNOWN_NAME_VARIANTS = {
+        "mayukh": [
+            "mayukh", "mayuk", "moyukh", "mayookh", "mayook", "myukh", "mayuq", "mayooq",
+            "mayukha", "moyuk", "mayukh's", "mayuk's",
+            "ময়ূখ", "ময়ুখ", "মৈয়ুখ", "ময়ূখের", "ময়ুখের",
+            "मयूख", "मयुक", "मयुख"
+        ],
+        "alex": [
+            "alex", "alec", "aleks", "alexander", "alexa", "alex's",
+            "অ্যালেক্স", "এলেক্স", "एलेक्स"
+        ]
+    }
+
+    def __init__(self, names: List[str], threshold: float = 0.65, min_word_confidence: float = 0.20):
         self.names = [n.strip() for n in names if n.strip()]
         self.threshold = threshold
         self.min_word_confidence = min_word_confidence
         self.clean_names = [self._clean(n) for n in self.names]
         from daemon.match.intent_classifier import SemanticContextClassifier
         self.intent_classifier = SemanticContextClassifier()
-        # Only compute ASCII metaphone if text is latin; otherwise store empty string
-        self.phonetic_keys = [
-            jellyfish.metaphone(n) if n.isascii() else ""
-            for n in self.clean_names
-        ]
+
+        # Build expanded multi-script & pronunciation map
+        self.expanded_map = {}
+        self.phonetic_keys = []
+        for n in self.names:
+            clean = self._clean(n)
+            variants = {clean, n.lower()}
+            if clean in self.KNOWN_NAME_VARIANTS:
+                variants.update(self.KNOWN_NAME_VARIANTS[clean])
+            # Auto-generate common phonetic variations
+            if clean.endswith("h"):
+                variants.add(clean[:-1])
+            else:
+                variants.add(clean + "h")
+            if "oo" in clean:
+                variants.add(clean.replace("oo", "u"))
+            elif "u" in clean:
+                variants.add(clean.replace("u", "oo"))
+            if clean.startswith("ma"):
+                variants.add("mo" + clean[2:])
+            elif clean.startswith("mo"):
+                variants.add("ma" + clean[2:])
+            self.expanded_map[n] = list(variants)
+            self.phonetic_keys.append(jellyfish.metaphone(clean) if clean.isascii() else "")
 
     @staticmethod
     def _clean(text: str) -> str:
-        # Preserve Unicode alphanumeric characters (Bengali, Devanagari, Latin) while stripping punctuation
-        return re.sub(r"[^\w\s]", "", text, flags=re.UNICODE).lower().strip()
+        # Preserve Unicode alphanumeric characters and combining marks (Bengali vowel signs, viramas)
+        import unicodedata
+        chars = []
+        for c in text:
+            cat = unicodedata.category(c)
+            if cat.startswith("L") or cat.startswith("N") or cat.startswith("M") or c.isspace():
+                chars.append(c)
+        return "".join(chars).lower().strip()
 
     @staticmethod
     def _extract_context_clause(text: str, detected_word: str) -> str:
@@ -122,27 +160,27 @@ class NameMatcher:
 
                 for target, target_phonetic in zip(self.names, self.phonetic_keys):
                     target_clean = self._clean(target)
+                    variants = self.expanded_map.get(target, [target_clean])
 
-                    # 1. Exact string match
-                    if candidate_str == target_clean:
+                    # 1. Exact string or script variant match
+                    if candidate_str == target_clean or candidate_str in variants:
                         base_score = 1.0
                     else:
-                        # 2. Phonetic match (ASCII only)
+                        # 2. Phonetic match (ASCII)
                         cand_phonetic = jellyfish.metaphone(candidate_str) if candidate_str.isascii() else ""
                         phonetic_hit = bool(cand_phonetic and target_phonetic and cand_phonetic == target_phonetic)
                         
-                        # 3. Fuzzy string similarity
-                        fuzzy_ratio = fuzz.ratio(candidate_str, target_clean) / 100.0
+                        # 3. Fuzzy string similarity against target and variants
+                        best_fuzzy = max([fuzz.ratio(candidate_str, v) for v in variants] + [fuzz.ratio(candidate_str, target_clean)]) / 100.0
 
-                        if phonetic_hit:
-                            # Strong bonus if phonetics match and fuzzy ratio is decent
-                            base_score = max(0.85, (fuzzy_ratio * 0.5) + 0.45)
+                        if phonetic_hit or best_fuzzy >= 0.82:
+                            base_score = max(0.88, (best_fuzzy * 0.5) + 0.45)
                         else:
-                            base_score = fuzzy_ratio * 0.90
+                            base_score = best_fuzzy * 0.90
 
-                    # Soft scale base score if confidence is mediocre
-                    if cand_confidence < 0.65:
-                        base_score *= max(0.75, cand_confidence)
+                    # Soft scale base score if confidence is low
+                    if cand_confidence < 0.40:
+                        base_score *= max(0.80, cand_confidence)
 
                     # 4. Context cues
                     cue_boost = 0.0

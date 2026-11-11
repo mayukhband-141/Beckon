@@ -23,3 +23,4 @@ class QuickReplyReceiver : BroadcastReceiver() {
         }
     }
 }
+

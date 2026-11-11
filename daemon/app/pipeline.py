@@ -112,21 +112,22 @@ class DetectionPipeline:
                 new_samples = current_total - self.last_processed_sample
                 is_kws_fast_track = bool(self.kws_fast_track)
                 kws_hit_info = self.kws_fast_track
-                min_step_samples = int(self.config.sample_rate * 0.25) if is_kws_fast_track else int(self.config.sample_rate * 0.8)
+                min_step_samples = int(self.config.sample_rate * 0.25) if is_kws_fast_track else int(self.config.sample_rate * 0.4)
 
                 # 1. Check if we have received enough samples and new audio has arrived
-                if current_total >= int(self.config.sample_rate * 1.5) and new_samples >= min_step_samples:
+                if current_total >= int(self.config.sample_rate * 1.0) and new_samples >= min_step_samples:
                     self.kws_fast_track = None
                     # Fetch sliding window (e.g. 5.0 seconds)
                     audio_window = self.ring_buffer.get_last_n_seconds(self.config.chunk_window_sec)
 
-                    # Quick energy gate: skip heavy STT when room is quiet / silence
-                    energy = float(np.mean(np.abs(audio_window))) if len(audio_window) > 0 else 0.0
+                    # Dynamic speech energy gate: preserve short utterances & quiet phone mic speech
+                    peak_energy = float(np.max(np.abs(audio_window))) if len(audio_window) > 0 else 0.0
+                    mean_energy = float(np.mean(np.abs(audio_window))) if len(audio_window) > 0 else 0.0
                     text = ""
                     words = []
 
-                    if energy < 0.003:
-                        # Advance sample counter so silence doesn't accumulate
+                    if peak_energy < 0.004 and mean_energy < 0.0002:
+                        # True dead silence
                         self.last_processed_sample = current_total
                     else:
                         self.last_processed_sample = current_total
@@ -144,9 +145,10 @@ class DetectionPipeline:
                         )
 
                     clean_text = text.strip()
-                    if clean_text and clean_text not in self.processed_texts:
-                        logger.info(f"[Heard]: \"{clean_text}\"")
-                        self.processed_texts.append(clean_text)
+                    if clean_text:
+                        logger.info(f"[Heard]: \"{clean_text}\" (peak_energy={peak_energy:.3f})")
+                        if clean_text not in self.processed_texts:
+                            self.processed_texts.append(clean_text)
 
                         # Passive acoustic voiceprint recognition & enrollment
                         self.speaker_tracker.observe_audio_frame(audio_window)
@@ -169,20 +171,22 @@ class DetectionPipeline:
                             last_name_time = self.last_alert_times.get(target_key, 0.0)
                             context_clause = match.context_sentence.strip()
 
-                            # Prevent re-alerting on the identical clause across overlapping sliding windows
+                            # Prevent re-alerting on the identical clause across immediate sub-second cycles
                             is_duplicate_sentence = any(
-                                fuzz.ratio(context_clause.lower(), prev.lower()) > 85
+                                fuzz.ratio(context_clause.lower(), prev.lower()) > 90
                                 for prev in self.recent_alert_sentences
                             )
 
-                            if (
-                                (now - last_name_time >= self.config.cooldown_sec)
-                                and (now - self.last_global_alert_time >= 2.0)
-                                and not is_duplicate_sentence
-                            ):
+                            cooldown = 2.5  # Responsive 2.5s cooldown
+                            if (now - last_name_time >= cooldown) and (now - self.last_global_alert_time >= 1.5):
                                 self.last_alert_times[target_key] = now
                                 self.last_global_alert_time = now
                                 self.recent_alert_sentences.append(context_clause)
+
+                                logger.info(
+                                    "🚨 *** NAME MATCHED & ALERT DISPATCHED: %s (score=%.2f, phrase='%s') ***",
+                                    match.target_name, match.score, match.detected_phrase
+                                )
 
                                 # Tier 3: LLM Catch-Up Summarization (Groq or Ollama, with instant fallback)
                                 summary_sentence = await self.summarizer.async_summarize(
@@ -208,6 +212,12 @@ class DetectionPipeline:
                                     "word_confidence": match.word_confidence,
                                     "kws_fast_path": is_kws_fast_track,
                                     "kws_score": kws_hit_info.get("score") if kws_hit_info else None,
+                                    "sentence": summary_sentence,
+                                    "raw_sentence": context_clause,
+                                    "quick_replies": quick_replies,
+                                    "rolling_transcript": self.ring_buffer.get_recent_transcript_context(45.0),
+                                    "timestamp": now
+                                }
                                     "sentence": summary_sentence,
                                     "raw_sentence": context_clause,
                                     "quick_replies": quick_replies,

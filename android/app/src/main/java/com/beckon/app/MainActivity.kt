@@ -21,7 +21,9 @@ import android.widget.*
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.beckon.app.util.PreferencesManager
+import kotlinx.coroutines.launch
 import java.net.ConnectException
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -30,6 +32,19 @@ import java.net.SocketTimeoutException
 class MainActivity : AppCompatActivity() {
 
     private lateinit var prefs: PreferencesManager
+
+    // Shazam Hero Screen Views
+    private lateinit var btnShazamHero: View
+    private lateinit var tvShazamTitle: TextView
+    private lateinit var tvShazamSubtitle: TextView
+    private lateinit var tvShazamStatusPill: TextView
+    private lateinit var viewShazamPulseRing: View
+    private lateinit var btnChangeTargetName: View
+    private lateinit var tvShazamTargetName: TextView
+    private lateinit var btnAutoScanIp: View
+    private lateinit var tvCurrentIpDisplay: TextView
+    private lateinit var tvScanLabel: TextView
+    private var pulseAnimator: android.animation.ValueAnimator? = null
 
     private lateinit var etTargetNames: EditText
     private lateinit var etServerIp: EditText
@@ -140,7 +155,11 @@ class MainActivity : AppCompatActivity() {
         loadPreferences()
         setupListeners()
         refreshAlerts()
-        pingDaemon()
+        if (prefs.serverIp.isBlank() || prefs.serverIp.startsWith("192.168.1.100")) {
+            autoDetectDaemon()
+        } else {
+            pingDaemon()
+        }
     }
 
     override fun onResume() {
@@ -152,6 +171,18 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun initViews() {
+        // Shazam Hero Screen bindings
+        btnShazamHero = findViewById(R.id.btnShazamHero)
+        tvShazamTitle = findViewById(R.id.tvShazamTitle)
+        tvShazamSubtitle = findViewById(R.id.tvShazamSubtitle)
+        tvShazamStatusPill = findViewById(R.id.tvShazamStatusPill)
+        viewShazamPulseRing = findViewById(R.id.viewShazamPulseRing)
+        btnChangeTargetName = findViewById(R.id.btnChangeTargetName)
+        tvShazamTargetName = findViewById(R.id.tvShazamTargetName)
+        btnAutoScanIp = findViewById(R.id.btnAutoScanIp)
+        tvCurrentIpDisplay = findViewById(R.id.tvCurrentIpDisplay)
+        tvScanLabel = findViewById(R.id.tvScanLabel)
+
         etTargetNames = findViewById(R.id.etTargetNamesDashboard)
         etServerIp = findViewById(R.id.etServerIp)
         etGroqApiKey = findViewById(R.id.etGroqApiKey)
@@ -247,9 +278,58 @@ class MainActivity : AppCompatActivity() {
         } else {
             rbMic.isChecked = true
         }
+
+        val currentNames = prefs.targetNames
+        val firstName = currentNames.split(",").firstOrNull()?.trim() ?: "Mayukh"
+        tvShazamTargetName.text = if (firstName.isNotEmpty()) firstName else "Mayukh"
+        tvCurrentIpDisplay.text = prefs.serverIp.ifEmpty { "192.168.29.102:8765" }
+    }
+
+    private fun startPulseAnimation() {
+        viewShazamPulseRing.visibility = View.VISIBLE
+        pulseAnimator?.cancel()
+        pulseAnimator = android.animation.ValueAnimator.ofFloat(1.0f, 1.28f).apply {
+            duration = 1000
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            repeatMode = android.animation.ValueAnimator.REVERSE
+            addUpdateListener { animator ->
+                val scale = animator.animatedValue as Float
+                viewShazamPulseRing.scaleX = scale
+                viewShazamPulseRing.scaleY = scale
+                viewShazamPulseRing.alpha = 1.2f - (scale - 1.0f) * 3f
+            }
+            start()
+        }
+    }
+
+    private fun stopPulseAnimation() {
+        pulseAnimator?.cancel()
+        pulseAnimator = null
+        viewShazamPulseRing.visibility = View.GONE
+        viewShazamPulseRing.scaleX = 1f
+        viewShazamPulseRing.scaleY = 1f
     }
 
     private fun syncButtonStates() {
+        val currentNames = prefs.targetNames
+        val firstName = currentNames.split(",").firstOrNull()?.trim() ?: "Mayukh"
+        val displayName = if (firstName.isNotEmpty()) firstName else "Mayukh"
+        tvShazamTargetName.text = displayName
+
+        if (isListening) {
+            tvShazamTitle.text = "Listening for $displayName"
+            tvShazamSubtitle.text = "Audio is streaming live to Beckon PC"
+            tvShazamStatusPill.text = "ACTIVE • LISTENING LIVE"
+            tvShazamStatusPill.setTextColor(ContextCompat.getColor(this, R.color.accent_green))
+            startPulseAnimation()
+        } else {
+            tvShazamTitle.text = "Tap to Beckon"
+            tvShazamSubtitle.text = "Hears your name and alerts you instantly"
+            tvShazamStatusPill.text = "IDLE • TAP CIRCLE TO START"
+            tvShazamStatusPill.setTextColor(ContextCompat.getColor(this, R.color.text_tertiary))
+            stopPulseAnimation()
+        }
+
         if (btnStartListening is com.google.android.material.button.MaterialButton) {
             val mb = btnStartListening as com.google.android.material.button.MaterialButton
             if (isListening) {
@@ -400,6 +480,69 @@ class MainActivity : AppCompatActivity() {
                 initiateListening()
             } else {
                 stopListening()
+            }
+        }
+
+        // Shazam Hero Screen Click Listeners
+        btnShazamHero.setOnClickListener {
+            if (!isListening) {
+                initiateListening()
+            } else {
+                stopListening()
+            }
+        }
+
+        btnChangeTargetName.setOnClickListener {
+            showChangeTargetNameDialog()
+        }
+
+        btnAutoScanIp.setOnClickListener {
+            autoDetectDaemon()
+        }
+    }
+
+    private fun showChangeTargetNameDialog() {
+        val input = EditText(this).apply {
+            setText(prefs.targetNames)
+            hint = "Mayukh, Alex"
+            setPadding(48, 36, 48, 36)
+            setTextColor(ContextCompat.getColor(this@MainActivity, R.color.text_primary))
+        }
+        androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Set Target Name")
+            .setMessage("Enter your name so Beckon alerts you when it is called:")
+            .setView(input)
+            .setPositiveButton("Save") { _, _ ->
+                val newName = input.text.toString().trim()
+                if (newName.isNotEmpty()) {
+                    prefs.targetNames = newName
+                    val first = newName.split(",").first().trim()
+                    tvShazamTargetName.text = first
+                    etTargetNames.setText(newName)
+                    val allList = newName.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+                    AudioCaptureService.instance?.updateNames(allList[0], allList.drop(1))
+                    syncButtonStates()
+                    Toast.makeText(this, "Listening for: $first", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Cancel", null)
+            .show()
+    }
+
+    private fun autoDetectDaemon() {
+        tvScanLabel.text = "Scanning network..."
+        lifecycleScope.launch {
+            val endpoint = com.beckon.app.util.DiscoveryClient.discoverDaemon()
+            if (endpoint != null) {
+                prefs.serverIp = endpoint
+                etServerIp.setText(endpoint)
+                tvCurrentIpDisplay.text = endpoint
+                tvScanLabel.text = "✓ Discovered"
+                Toast.makeText(this@MainActivity, "Found Beckon at: $endpoint", Toast.LENGTH_SHORT).show()
+                pingDaemon()
+            } else {
+                tvScanLabel.text = "(Tap to Retry)"
+                Toast.makeText(this@MainActivity, "Scan timed out. Make sure PC daemon is running.", Toast.LENGTH_SHORT).show()
             }
         }
     }

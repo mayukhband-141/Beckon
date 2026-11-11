@@ -64,8 +64,9 @@ class WhisperEngine:
             self.load_model()
 
         # Check for absolute silence / very low energy to skip unnecessary VAD processing
-        energy = np.mean(np.abs(audio_window))
-        if energy < 0.001:
+        peak = np.max(np.abs(audio_window)) if len(audio_window) > 0 else 0.0
+        mean = np.mean(np.abs(audio_window)) if len(audio_window) > 0 else 0.0
+        if peak < 0.004 and mean < 0.0002:
             return "", []
 
         # Target language handling: strictly constrain detection to user's allowed language array
