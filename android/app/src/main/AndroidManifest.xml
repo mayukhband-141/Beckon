@@ -43,6 +43,15 @@
             android:exported="false"
             android:foregroundServiceType="microphone|mediaProjection" />
 
+        <!-- Broadcast Receiver for Notification Quick Reply Actions -->
+        <receiver
+            android:name=".util.QuickReplyReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.beckon.app.ACTION_COPY_REPLY" />
+            </intent-filter>
+        </receiver>
+
     </application>
 
 </manifest>

@@ -171,12 +171,10 @@ class BeckonServer:
             remote = getattr(connection, "remote_address", "client")
             logger.info("Pairing request received from %s -> responded pairing JSON", remote)
             pairing_json = json.dumps(self.beacon.get_pairing_payload(), indent=2)
-            headers = [
-                ("Content-Type", "application/json"),
-                ("Access-Control-Allow-Origin", "*"),
-                ("Content-Length", str(len(pairing_json)))
-            ]
-            return connection.respond(http.HTTPStatus.OK, pairing_json, headers=headers)
+            resp = connection.respond(http.HTTPStatus.OK, pairing_json)
+            resp.headers["Content-Type"] = "application/json"
+            resp.headers["Access-Control-Allow-Origin"] = "*"
+            return resp
         return None
 
     async def start(self):

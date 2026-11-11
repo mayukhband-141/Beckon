@@ -20,11 +20,14 @@ class CatchUpSummarizer:
         self,
         groq_api_key: Optional[str] = None,
         ollama_url: Optional[str] = None,
-        model: str = "llama-3.1-8b-instant",
+        model: str = "qwen/qwen3.8-27b",
         timeout_sec: float = 2.0,
     ):
         self.groq_api_key = groq_api_key.strip() if groq_api_key else ""
         self.ollama_url = ollama_url.strip() if ollama_url else ""
+        # Automatically upgrade deprecated / discontinued models to ultra-fast qwen3.8-27b
+        if model in ("llama-3.1-8b-instant", "llama3-8b-8192", "llama-3-8b-instruct"):
+            model = "qwen/qwen3.8-27b"
         self.model = model
         self.timeout_sec = timeout_sec
 
@@ -65,32 +68,56 @@ class CatchUpSummarizer:
         headers = {
             "Authorization": f"Bearer {self.groq_api_key}",
             "Content-Type": "application/json",
-            "User-Agent": "Beckon-Meeting-Assistant/1.0",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Beckon/1.0",
         }
-        payload = {
-            "model": self.model,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Spoken context: {user_prompt}"},
-            ],
-            "max_tokens": 40,
-            "temperature": 0.2,
-        }
+        candidate_models = [self.model, "qwen/qwen3.8-27b", "openai/gpt-oss-20b"]
+        # Deduplicate while preserving priority order
+        seen_models = set()
+        models_to_try = [m for m in candidate_models if not (m in seen_models or seen_models.add(m))]
 
-        req = urllib.request.Request(
-            url,
-            data=json.dumps(payload).encode("utf-8"),
-            headers=headers,
-            method="POST",
-        )
+        last_error = None
+        for current_model in models_to_try:
+            payload = {
+                "model": current_model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": f"Spoken context: {user_prompt}"},
+                ],
+                "max_tokens": 40,
+                "temperature": 0.2,
+            }
 
-        with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-            content = data["choices"][0]["message"]["content"].strip()
-            # Strip enclosing quotes if model returned them
-            if content.startswith('"') and content.endswith('"'):
-                content = content[1:-1].strip()
-            return content if content else fallback
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(payload).encode("utf-8"),
+                headers=headers,
+                method="POST",
+            )
+
+            try:
+                with urllib.request.urlopen(req, timeout=self.timeout_sec) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+                    content = data["choices"][0]["message"]["content"].strip()
+                    # Strip enclosing quotes if model returned them
+                    if content.startswith('"') and content.endswith('"'):
+                        content = content[1:-1].strip()
+                    if content:
+                        return content
+            except urllib.error.HTTPError as e:
+                last_error = e
+                # If model not found or forbidden, try next candidate model
+                if e.code in (400, 404):
+                    logger.warning("Groq model '%s' unavailable (HTTP %d). Trying fallback...", current_model, e.code)
+                    continue
+                raise
+            except Exception as e:
+                last_error = e
+                logger.warning("Error calling Groq with model '%s': %s", current_model, e)
+                break
+
+        if last_error:
+            logger.debug("Catch-up summarization fell back to snippet: %s", last_error)
+        return fallback
 
     def _call_ollama(self, system_prompt: str, user_prompt: str, fallback: str) -> str:
         base_url = self.ollama_url.rstrip("/")

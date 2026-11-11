@@ -153,7 +153,12 @@ class AudioCaptureService : Service() {
             .build()
     }
 
-    private fun postAlertNotification(speaker: String, sentence: String, @Suppress("UNUSED_PARAMETER") score: Double) {
+    private fun postAlertNotification(
+        speaker: String,
+        sentence: String,
+        @Suppress("UNUSED_PARAMETER") score: Double,
+        quickReplies: List<String> = emptyList()
+    ) {
         val alertChannelId = "beckon_alert_channel"
         val manager = getSystemService(NotificationManager::class.java)
 
@@ -191,7 +196,7 @@ class AudioCaptureService : Service() {
             null
         }
 
-        val notif = NotificationCompat.Builder(this, alertChannelId)
+        val notifBuilder = NotificationCompat.Builder(this, alertChannelId)
             .setContentTitle("$speaker called you!")
             .setContentText(sentence)
             .setStyle(NotificationCompat.BigTextStyle().bigText("\"$sentence\""))
@@ -204,7 +209,27 @@ class AudioCaptureService : Service() {
             .setAutoCancel(true)
             .setContentIntent(pendingIntent)
             .setDefaults(NotificationCompat.DEFAULT_ALL)
-            .build()
+
+        // Attach 1-click Quick-Reply Action Pills directly to notification
+        quickReplies.take(3).forEachIndexed { idx, reply ->
+            val replyIntent = Intent(this, com.beckon.app.util.QuickReplyReceiver::class.java).apply {
+                action = com.beckon.app.util.QuickReplyReceiver.ACTION_COPY_REPLY
+                putExtra(com.beckon.app.util.QuickReplyReceiver.EXTRA_REPLY_TEXT, reply)
+            }
+            val replyPendingIntent = PendingIntent.getBroadcast(
+                this,
+                (System.currentTimeMillis() % 10000).toInt() + idx * 100,
+                replyIntent,
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+                } else {
+                    PendingIntent.FLAG_UPDATE_CURRENT
+                }
+            )
+            notifBuilder.addAction(0, reply, replyPendingIntent)
+        }
+
+        val notif = notifBuilder.build()
 
         val alertNotifId = (System.currentTimeMillis() % 10000).toInt() + 200
         try {
@@ -229,9 +254,9 @@ class AudioCaptureService : Service() {
         // 1. Establish WebSocket stream to local daemon
         streamer = AudioStreamer(
             serverUrl = serverUrl,
-            onAlertReceived = { speaker, sentence, score ->
+            onAlertReceived = { speaker, sentence, score, quickReplies ->
                 prefs.addAlert(speaker, sentence, score)
-                postAlertNotification(speaker, sentence, score)
+                postAlertNotification(speaker, sentence, score, quickReplies)
                 FloatingWidgetService.instance?.showAlert(speaker, sentence, score)
                 MainActivity.instance?.refreshAlerts()
             },
