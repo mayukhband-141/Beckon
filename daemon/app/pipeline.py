@@ -218,12 +218,6 @@ class DetectionPipeline:
                                     "rolling_transcript": self.ring_buffer.get_recent_transcript_context(45.0),
                                     "timestamp": now
                                 }
-                                    "sentence": summary_sentence,
-                                    "raw_sentence": context_clause,
-                                    "quick_replies": quick_replies,
-                                    "rolling_transcript": self.ring_buffer.get_recent_transcript_context(45.0),
-                                    "timestamp": now
-                                }
                                 logger.info(f"*** NAME DETECTED ***: {alert_event}")
                                 if self.on_alert_callback:
                                     await self.on_alert_callback(alert_event)
