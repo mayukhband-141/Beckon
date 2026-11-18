@@ -49,7 +49,6 @@ class UDPDiscoveryBeacon:
             "host": self.local_ip,
             "port": self.ws_port,
             "ws_url": f"ws://{self.local_ip}:{self.ws_port}",
-            "token": self.auth_token,
         }
 
     def print_terminal_card(self):
@@ -70,6 +69,10 @@ class UDPDiscoveryBeacon:
         print("-" * box_width)
         print("  [Android App] Tap 'Auto-Detect' on the same Wi-Fi,")
         print(f"                or enter: {ip}:{port}")
+        if self.auth_token:
+            print("-" * box_width)
+            print(f"  • Auth Token (enter manually in the app):")
+            print(f"    {self.auth_token}")
         print("=" * box_width + "\n")
 
     async def _broadcast_loop(self):
@@ -87,7 +90,9 @@ class UDPDiscoveryBeacon:
         except Exception as e:
             logger.debug("Could not bind receiver on UDP %d (%s), continuing broadcast-only", self.BROADCAST_PORT, e)
 
-        payload_bytes = json.dumps(self.get_pairing_payload()).encode("utf-8")
+        # Token is never broadcast over UDP — only shown in terminal card for manual entry
+        udp_payload = self.get_pairing_payload()
+        payload_bytes = json.dumps(udp_payload).encode("utf-8")
         broadcast_addr = ("255.255.255.255", self.BROADCAST_PORT)
 
         logger.info("UDP Discovery Beacon active on port %d (Broadcasting to LAN)", self.BROADCAST_PORT)

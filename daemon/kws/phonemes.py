@@ -38,14 +38,17 @@ class PhoneticAcousticMapper:
         cls.PHONEME_PROTOTYPES["AE"] = make_profile(0.7, 0.9, 0.7, 0.2)  # "ae" (cat, Alex)
         cls.PHONEME_PROTOTYPES["AH"] = make_profile(0.8, 0.7, 0.4, 0.1)  # "uh" (but, Sarah)
         cls.PHONEME_PROTOTYPES["EH"] = make_profile(0.6, 0.9, 0.6, 0.2)  # "eh" (bed, Alec)
+        cls.PHONEME_PROTOTYPES["IH"] = make_profile(0.8, 0.6, 0.7, 0.2)  # "ih" (bit, Will)
         cls.PHONEME_PROTOTYPES["IY"] = make_profile(0.9, 0.4, 0.9, 0.3)  # "ee" (see, Ali)
         cls.PHONEME_PROTOTYPES["UW"] = make_profile(0.9, 0.5, 0.3, 0.1)  # "oo" (too, Mayukh)
         cls.PHONEME_PROTOTYPES["OW"] = make_profile(0.8, 0.7, 0.3, 0.1)  # "oh" (go)
+        cls.PHONEME_PROTOTYPES["ER"] = make_profile(0.7, 0.8, 0.5, 0.2)  # "er" (her, Alexander)
 
         # Consonants - Sibilants & Fricatives (high frequency energy)
         cls.PHONEME_PROTOTYPES["S"]  = make_profile(0.1, 0.2, 0.6, 1.0)  # /s/ (Alex)
         cls.PHONEME_PROTOTYPES["Z"]  = make_profile(0.3, 0.3, 0.6, 0.9)  # /z/
         cls.PHONEME_PROTOTYPES["SH"] = make_profile(0.1, 0.3, 0.9, 0.8)  # /sh/ (Mayukh, Bengali)
+        cls.PHONEME_PROTOTYPES["JH"] = make_profile(0.4, 0.4, 0.8, 0.8)  # /jh/ (John)
         cls.PHONEME_PROTOTYPES["F"]  = make_profile(0.2, 0.4, 0.5, 0.7)  # /f/
         cls.PHONEME_PROTOTYPES["HH"] = make_profile(0.2, 0.5, 0.6, 0.5)  # /h/ (Mayukh)
 

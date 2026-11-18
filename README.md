@@ -6,11 +6,11 @@
 
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-blue?logo=python)](daemon/)
-[![Android](https://img.shields.io/badge/Android-API%2026%2B%20(Target%2034)-green?logo=android)](android/)
+[![Android](https://img.shields.io/badge/Android-API%2029%2B%20(Target%2034)-green?logo=android)](android/)
 [![Chrome Extension](https://img.shields.io/badge/Chrome-MV3-yellow?logo=googlechrome)](extension/)
 [![Tests](https://img.shields.io/badge/Tests-100%25%20Passing-brightgreen)](eval/)
 
-*Zero audio leaves your machine. Real-time sub-second acoustic alerts with contextual sentence verification and AI catch-up summaries.*
+*Local-first audio processing. Real-time sub-second acoustic alerts with contextual sentence verification and AI catch-up summaries.*
 
 ---
 
@@ -68,12 +68,12 @@ Beckon runs as a **dual-stream hybrid pipeline**. Audio streamed from Google Mee
 
 ### 2. Zero-Cloud Privacy & Dynamic Client Identity (Tiers 1–2)
 * **Local Processing**: Audio is processed entirely in RAM on your machine via `faster-whisper` (int8 quantized CPU). No audio streams ever leave your hardware.
-* **Dynamic Client Enrollment**: Target names, phonetic aliases, and sensitivity levels are configured dynamically from the Chrome extension or Android companion app over authenticated WebSockets. No restarting or editing `.env` files required.
+* **Dynamic Client Enrollment**: Target names, phonetic aliases, and sensitivity levels are configured dynamically from the Chrome extension or Android companion app over WebSockets. No restarting or editing `.env` files required.
 * **Word Confidence Gating**: Filters out low-probability hallucinations during background babble or noisy environments.
 
 ### 3. AI Catch-Up Summaries (Tier 3)
 * When your name is called while you were context-switching, Beckon extracts the preceding 30–60 seconds of conversational context and condenses it into a single clean summary line (e.g. *"Sarah is asking for your sign-off on the staging database migration"*).
-* Powered by Groq's free cloud API (`Llama 3.1 8B`) or local on-device `Ollama`. Only short transcript snippets are sent — never audio.
+* Powered by Groq's cloud API (`Qwen 3.8 27B`) or local on-device `Ollama`. Note: When enabled, brief text transcript snippets (never raw audio) are sent to generate the 1-sentence summary.
 
 ---
 
@@ -141,11 +141,7 @@ The daemon will launch on `ws://127.0.0.1:8765`.
 
 ### 3. Set Up the Android Companion App
 
-1. Download the pre-built `beckon.apk` from the latest **GitHub Actions Artifacts** build, or build it locally via Android Studio:
-   ```bash
-   cd android
-   ./gradlew assembleDebug
-   ```
+1. Download the pre-built `beckon.apk` from the latest **GitHub Actions Artifacts** build, or build it locally via Android Studio (`Build > Build Bundle(s) / APK(s) > Build APK(s)`).
 2. Install the APK on your phone and grant **Microphone** and **Display over other apps** permissions.
 3. In the Beckon app settings:
    * Enter your PC's local IP address (e.g., `192.168.1.100:8765`).
@@ -160,15 +156,16 @@ All settings can be configured via environment variables in `.env` or passed as 
 
 | Environment Variable | CLI Flag | Default | Description |
 | :--- | :--- | :---: | :--- |
-| `BECKON_HOST` | `--host` | `0.0.0.0` | Daemon WebSocket host address |
+| `BECKON_HOST` | `--host` | `127.0.0.1` | Daemon WebSocket host address (`0.0.0.0` with `--lan`) |
 | `BECKON_PORT` | `--port` | `8765` | Daemon WebSocket listening port |
-| `BECKON_AUTH_TOKEN` | `--token` | `""` | Optional shared secret for client authentication |
+| `BECKON_AUTH_TOKEN` | - | `""` | Optional shared secret token for client authentication |
 | `BECKON_MODEL` | `--model` | `small` | Faster-Whisper model size (`tiny`, `base`, `small`, `medium`) |
-| `BECKON_LANGUAGES` | `--languages` | `en,bn,hi` | Active speech transcription languages |
+| `BECKON_LANGUAGES` | `--languages` | `en bn hi` | Active speech transcription languages |
 | `BECKON_MIN_WORD_CONFIDENCE`| `--confidence`| `0.40` | Minimum word probability threshold to prevent hallucinations |
-| `BECKON_ENABLE_KWS` | `--enable-kws` | `true` | Enables Tier 4 Acoustic Keyword Spotting fast path |
-| `BECKON_KWS_THRESHOLD` | `--kws-thresh` | `0.65` | Sensitivity threshold for acoustic trigger |
 | `BECKON_GROQ_API_KEY` | `--groq-key` | `""` | Optional Groq key for Tier 3 summaries (or passed dynamically from client) |
+| `BECKON_OLLAMA_URL` | `--ollama-url` | `""` | Optional local Ollama endpoint (e.g. `http://localhost:11434`) |
+| - | `--lan` | `false` | Bind to `0.0.0.0` to allow companion phone/devices on local Wi-Fi |
+| - | `--loopback` | `false` | Enable system audio loopback capture for Zoom, Teams, Slack |
 
 ---
 

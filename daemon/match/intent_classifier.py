@@ -246,15 +246,7 @@ class SemanticContextClassifier:
     }
 
     def __init__(self, model_path: Optional[str] = None):
-        self.onnx_session = None
-        if model_path:
-            try:
-                import onnxruntime as ort
-                opts = ort.SessionOptions()
-                opts.intra_op_num_threads = 1
-                self.onnx_session = ort.InferenceSession(model_path, sess_options=opts, providers=["CPUExecutionProvider"])
-            except Exception:
-                pass
+        pass
 
     @staticmethod
     def _clean_token(token: str) -> str:

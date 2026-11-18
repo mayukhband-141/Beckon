@@ -62,7 +62,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var rbMic: RadioButton
     private lateinit var rbInternal: RadioButton
-    private lateinit var btnToggleFloating: Button
+    private lateinit var btnToggleFloating: TextView
     private lateinit var btnStartListening: Button
     private lateinit var llAlertsContainer: LinearLayout
 
@@ -761,10 +761,35 @@ class MainActivity : AppCompatActivity() {
 
             for (item in alerts) {
                 val card = LayoutInflater.from(this).inflate(R.layout.item_alert_history, llAlertsContainer, false)
-                card.findViewById<TextView>(R.id.tvHistorySpeaker).text =
-                    item.optString("speaker", "Someone") + " called you"
+                val speaker = item.optString("speaker", "Someone")
+                val timeStr = item.optString("time", "")
+                val speakerLabel = if (timeStr.isNotBlank()) "$speaker called you · $timeStr" else "$speaker called you"
+                card.findViewById<TextView>(R.id.tvHistorySpeaker).text = speakerLabel
                 card.findViewById<TextView>(R.id.tvHistorySentence).text =
                     "\"${item.optString("sentence", "")}\""
+
+                val score = item.optDouble("score", 0.0)
+                val scoreView = card.findViewById<TextView>(R.id.tvHistoryMatchScore)
+                if (score > 0) {
+                    scoreView.text = "[${(score * 100).toInt()}% Match]"
+                    scoreView.visibility = View.VISIBLE
+                } else {
+                    scoreView.visibility = View.GONE
+                }
+
+                val latencyMs = item.optDouble("latency_ms", item.optDouble("latency", 0.0))
+                val latencyView = card.findViewById<TextView>(R.id.tvHistoryLatency)
+                if (latencyMs > 0) {
+                    latencyView.text = "Inference: ~${latencyMs.toInt()}ms"
+                    latencyView.visibility = View.VISIBLE
+                } else {
+                    latencyView.visibility = View.GONE
+                }
+
+                val sourceView = card.findViewById<TextView>(R.id.tvHistorySource)
+                val source = item.optString("source", "Live Audio")
+                sourceView.text = "Audio: $source"
+
                 llAlertsContainer.addView(card)
             }
         }

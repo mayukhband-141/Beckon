@@ -71,6 +71,7 @@ class DetectionPipeline:
         self.last_processed_sample = 0
         self.recent_alert_sentences = deque(maxlen=20)
         self.processed_texts = deque(maxlen=50)
+        self._loop = None  # Set in run_loop(); used for thread-safe wake_event.set()
 
     def update_name_profile(self, canonical_name: str, aliases: list, sensitivity: str):
         self.config.name_profile.canonical_name = canonical_name
@@ -93,13 +94,15 @@ class DetectionPipeline:
             event = self.kws_engine.process_pcm16_chunk(pcm_bytes)
             if event:
                 self.kws_fast_track = event
-                self.wake_event.set()
+                if hasattr(self, '_loop') and self._loop:
+                    self._loop.call_soon_threadsafe(self.wake_event.set)
             return event
         return None
 
     async def run_loop(self):
         """Asynchronous processing loop for streaming sliding-window audio."""
         self.is_running = True
+        self._loop = asyncio.get_running_loop()
         logger.info("Detection pipeline loop started.")
 
         # Preload the Whisper model
@@ -151,8 +154,8 @@ class DetectionPipeline:
                             self.processed_texts.append(clean_text)
 
                         # Passive acoustic voiceprint recognition & enrollment
-                        self.speaker_tracker.observe_audio_frame(audio_window)
-                        current_speaker = self.speaker_tracker.get_current_speaker(audio_window)
+                        await asyncio.to_thread(self.speaker_tracker.observe_audio_frame, audio_window)
+                        current_speaker = await asyncio.to_thread(self.speaker_tracker.get_current_speaker, audio_window)
                         self.ring_buffer.add_transcript(clean_text, current_speaker)
 
                         if self.on_transcript_callback:
@@ -177,8 +180,9 @@ class DetectionPipeline:
                                 for prev in self.recent_alert_sentences
                             )
 
-                            cooldown = 2.5  # Responsive 2.5s cooldown
-                            if (now - last_name_time >= cooldown) and (now - self.last_global_alert_time >= 1.5):
+                            cooldown = getattr(self.config, "cooldown_sec", 2.5)
+                            global_cooldown = min(1.5, cooldown / 2.0)
+                            if not is_duplicate_sentence and (now - last_name_time >= cooldown) and (now - self.last_global_alert_time >= global_cooldown):
                                 self.last_alert_times[target_key] = now
                                 self.last_global_alert_time = now
                                 self.recent_alert_sentences.append(context_clause)

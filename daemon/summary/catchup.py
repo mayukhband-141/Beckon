@@ -25,8 +25,8 @@ class CatchUpSummarizer:
     ):
         self.groq_api_key = groq_api_key.strip() if groq_api_key else ""
         self.ollama_url = ollama_url.strip() if ollama_url else ""
-        # Automatically upgrade deprecated / discontinued models to ultra-fast qwen3.8-27b
-        if model in ("llama-3.1-8b-instant", "llama3-8b-8192", "llama-3-8b-instruct"):
+        # Automatically upgrade deprecated Groq models
+        if self.groq_api_key and model in ("llama-3.1-8b-instant", "llama3-8b-8192", "llama-3-8b-instruct"):
             model = "qwen/qwen3.8-27b"
         self.model = model
         self.timeout_sec = timeout_sec
@@ -68,7 +68,7 @@ class CatchUpSummarizer:
         headers = {
             "Authorization": f"Bearer {self.groq_api_key}",
             "Content-Type": "application/json",
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Beckon/1.0",
+            "User-Agent": "Beckon/1.0",
         }
         candidate_models = [self.model, "qwen/qwen3.8-27b", "openai/gpt-oss-20b"]
         # Deduplicate while preserving priority order
@@ -126,7 +126,7 @@ class CatchUpSummarizer:
             "Content-Type": "application/json",
         }
         payload = {
-            "model": self.model if "llama" in self.model else "llama3.2:1b",
+            "model": self.model if self.model else "llama3.2:1b",
             "system": system_prompt,
             "prompt": f"Spoken context: {user_prompt}",
             "stream": False,

@@ -1,5 +1,7 @@
 package com.beckon.app.audio
 
+import android.os.Handler
+import android.os.Looper
 import android.util.Log
 import okhttp3.*
 import okio.ByteString.Companion.toByteString
@@ -17,13 +19,35 @@ class AudioStreamer(
 
     private var webSocket: WebSocket? = null
     private var isConnected = false
+    private var pendingConfigJson: String? = null
+
+    // Exponential backoff reconnect state
+    private val reconnectHandler = Handler(Looper.getMainLooper())
+    private var reconnectAttempts = 0
+    private val maxReconnectAttempts = 5
+    private val baseReconnectDelayMs = 2000L
+    private var reconnectPending = false
 
     fun connect() {
+        reconnectAttempts = 0
+        reconnectPending = false
+        reconnectHandler.removeCallbacksAndMessages(null)
+        doConnect()
+    }
+
+    private fun doConnect() {
         val request = Request.Builder().url(serverUrl).build()
         webSocket = client.newWebSocket(request, object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {
                 Log.d("AudioStreamer", "WebSocket connected to $serverUrl")
                 isConnected = true
+                reconnectAttempts = 0
+                reconnectPending = false
+                reconnectHandler.removeCallbacksAndMessages(null)
+                pendingConfigJson?.let {
+                    webSocket.send(it)
+                    pendingConfigJson = null
+                }
                 onConnectionChanged(true)
             }
 
@@ -60,8 +84,26 @@ class AudioStreamer(
                 Log.e("AudioStreamer", "WebSocket failure: ${t.message}")
                 isConnected = false
                 onConnectionChanged(false)
+                scheduleReconnect()
             }
         })
+    }
+
+    private fun scheduleReconnect() {
+        if (reconnectPending || reconnectAttempts >= maxReconnectAttempts) {
+            if (reconnectAttempts >= maxReconnectAttempts) {
+                Log.e("AudioStreamer", "Max reconnect attempts ($maxReconnectAttempts) reached — giving up")
+            }
+            return
+        }
+        reconnectAttempts++
+        val delayMs = baseReconnectDelayMs * (1L shl (reconnectAttempts - 1)) // 2s, 4s, 8s, 16s, 32s
+        Log.d("AudioStreamer", "Reconnect attempt $reconnectAttempts/$maxReconnectAttempts in ${delayMs}ms")
+        reconnectPending = true
+        reconnectHandler.postDelayed({
+            reconnectPending = false
+            if (!isConnected) doConnect()
+        }, delayMs)
     }
 
     fun sendAudioChunk(pcmBytes: ByteArray, offset: Int, length: Int) {
@@ -79,10 +121,18 @@ class AudioStreamer(
                 put("groq_api_key", groqApiKey)
             }
         }
-        webSocket?.send(json.toString())
+        val jsonStr = json.toString()
+        if (isConnected && webSocket != null) {
+            webSocket?.send(jsonStr)
+        } else {
+            pendingConfigJson = jsonStr
+        }
     }
 
     fun disconnect() {
+        reconnectHandler.removeCallbacksAndMessages(null)
+        reconnectAttempts = maxReconnectAttempts // prevent any pending reconnects from firing
+        reconnectPending = false
         webSocket?.close(1000, "Normal Closure")
         webSocket = null
         isConnected = false

@@ -15,7 +15,8 @@ def test_udp_discovery_beacon():
     payload = beacon.get_pairing_payload()
     assert payload["service"] == "beckon"
     assert payload["port"] == 8765
-    assert payload["token"] == "test_tok"
+    assert "token" not in payload  # Token is not broadcast over UDP for security
+    assert beacon.auth_token == "test_tok"
     print(f"Pairing payload verified: {payload}")
 
 

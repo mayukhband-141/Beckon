@@ -42,7 +42,7 @@
                     android:layout_height="wrap_content"
                     android:layout_marginStart="8dp"
                     android:fontFamily="sans-serif-medium"
-                    android:text="Priya called you · 2m ago"
+                    android:text=""
                     android:textColor="@color/text_primary"
                     android:textSize="13sp" />
             </LinearLayout>
@@ -58,7 +58,7 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="7dp"
                 android:paddingBottom="2dp"
-                android:text="[98% Match]"
+                android:text=""
                 android:textColor="@color/accent_green"
                 android:textSize="10.5sp" />
         </RelativeLayout>
@@ -76,7 +76,7 @@
             android:paddingTop="10dp"
             android:paddingEnd="12dp"
             android:paddingBottom="10dp"
-            android:text="&quot;Could you check the slide, Alex?&quot;"
+            android:text="&quot;&quot;"
             android:textColor="@color/text_primary"
             android:textSize="12.5sp" />
 
@@ -93,7 +93,7 @@
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
                 android:fontFamily="monospace"
-                android:text="Audio: Live Feed"
+                android:text=""
                 android:textColor="@color/text_tertiary"
                 android:textSize="10.5sp" />
 
@@ -102,7 +102,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="monospace"
-                android:text="Inference: ~35ms"
+                android:text=""
                 android:textColor="@color/text_tertiary"
                 android:textSize="10.5sp" />
         </LinearLayout>

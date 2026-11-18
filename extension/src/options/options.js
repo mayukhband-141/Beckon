@@ -99,51 +99,84 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
 
+  function escapeHtml(str) {
+    if (!str) return "";
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   // Init options test WebSocket connection to daemon
   function initTestSocket() {
     if (testSocket && (testSocket.readyState === WebSocket.OPEN || testSocket.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
-    testSocket = new WebSocket("ws://127.0.0.1:8765");
-    testSocket.binaryType = "arraybuffer";
-
-    testSocket.onmessage = (e) => {
-      try {
-        if (typeof e.data === "string") {
-          const msg = JSON.parse(e.data);
-
-          if (msg.type === "transcript") {
-            liveTranscriptEl.textContent = `"${msg.text}"`;
-            checkAliasHarvest(msg.text, nameInput.value.trim());
-          }
-
-          if (msg.type === "alert") {
-            matchStatusArea.style.display = "block";
-            const scorePct = Math.round(msg.score * 100);
-            matchBadge.className = "match-result-badge match-success";
-            matchBadge.innerHTML = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>Detected '${msg.name}' (${scorePct}% match)`;
-
-            // Test chime if audio is enabled
-            if (soundAlertCheckbox.checked) {
-              playTestChime(parseFloat(chimeVolumeSlider.value));
-            }
-          }
-
-          if (msg.type === "test_evaluate_result") {
-            simResult.style.display = "block";
-            if (msg.matched) {
-              const pct = Math.round(msg.score * 100);
-              simResult.innerHTML = `<span style="color:#4ade80;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>Match Detected!</span> Target: <strong>${msg.target_name}</strong> (Score: <strong>${pct}%</strong>, Cue Boost: +${msg.cue_boost})`;
-            } else {
-              simResult.innerHTML = `<span style="color:#94a3b8;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>No Match</span> (Score below threshold for this sensitivity level).`;
-            }
-          }
-        }
-      } catch (err) {
-        console.error("Error processing daemon response:", err);
+    chrome.storage.local.get(["server_url", "auth_token"], (data) => {
+      let wsUrl = data.server_url || "ws://127.0.0.1:8765";
+      if (data.auth_token) {
+        const sep = wsUrl.includes("?") ? "&" : "?";
+        wsUrl = `${wsUrl}${sep}token=${encodeURIComponent(data.auth_token)}`;
       }
-    };
+      try {
+        testSocket = new WebSocket(wsUrl);
+      } catch (e) {
+        console.warn("Failed to create WebSocket:", e);
+        return;
+      }
+      testSocket.binaryType = "arraybuffer";
+
+      testSocket.onmessage = (e) => {
+        try {
+          if (typeof e.data === "string") {
+            const msg = JSON.parse(e.data);
+
+            if (msg.type === "transcript") {
+              liveTranscriptEl.textContent = `"${msg.text}"`;
+              checkAliasHarvest(msg.text, nameInput.value.trim());
+            }
+
+            if (msg.type === "alert") {
+              matchStatusArea.style.display = "block";
+              const scorePct = Math.round(msg.score * 100);
+              matchBadge.className = "match-result-badge match-success";
+              matchBadge.textContent = `Detected '${msg.name}' (${scorePct}% match)`;
+
+              // Test chime if audio is enabled
+              if (soundAlertCheckbox.checked) {
+                playTestChime(parseFloat(chimeVolumeSlider.value));
+              }
+            }
+
+            if (msg.type === "test_evaluate_result") {
+              simResult.style.display = "block";
+              if (msg.matched) {
+                const pct = Math.round(msg.score * 100);
+                simResult.innerHTML = `<span style="color:#4ade80;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><polyline points="20 6 9 17 4 12"></polyline></svg>Match Detected!</span> Target: <strong>${escapeHtml(msg.target_name)}</strong> (Score: <strong>${pct}%</strong>, Cue Boost: +${escapeHtml(msg.cue_boost)})`;
+              } else {
+                simResult.innerHTML = `<span style="color:#94a3b8;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-1px; margin-right:4px;"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>No Match</span> (Score below threshold for this sensitivity level).`;
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Error processing daemon response:", err);
+        }
+      };
+
+      testSocket.onerror = () => {
+        testStatusBadge.className = "status-badge status-disconnected";
+        testStatusBadge.textContent = "Daemon Disconnected";
+      };
+
+      testSocket.onclose = () => {
+        testStatusBadge.className = "status-badge status-disconnected";
+        testStatusBadge.textContent = "Daemon Disconnected";
+      };
+    });
+  }
   }
 
   initTestSocket();
@@ -185,9 +218,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // If word is reasonably close to primary name
         if (w.toLowerCase().startsWith(primaryName.slice(0, 2).toLowerCase())) {
           aliasSuggestion.style.display = "block";
+          const safeW = escapeHtml(w);
           aliasSuggestion.innerHTML = `
-            <div style="font-size:12px; color:#cbd5e1; margin-bottom:4px;">Whisper heard: <strong>"${w}"</strong></div>
-            <button id="add-alias-btn" class="btn btn-success">+ Add "${w}" to Aliases</button>
+            <div style="font-size:12px; color:#cbd5e1; margin-bottom:4px;">Whisper heard: <strong>"${safeW}"</strong></div>
+            <button id="add-alias-btn" class="btn btn-success">+ Add "${safeW}" to Aliases</button>
           `;
           document.getElementById("add-alias-btn").onclick = () => {
             const current = aliasesInput.value.trim();

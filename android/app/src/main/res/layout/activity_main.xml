@@ -380,7 +380,6 @@
                     android:layout_width="0dp"
                     android:layout_height="0dp"
                     android:visibility="gone">
-                    <Button android:id="@+id/btnStartListening" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     <EditText android:id="@+id/etTargetNamesDashboard" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     <View android:id="@+id/llEqualizerBars" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     <View android:id="@+id/eqBar1" android:layout_width="wrap_content" android:layout_height="wrap_content" />
@@ -388,7 +387,6 @@
                     <View android:id="@+id/eqBar3" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     <View android:id="@+id/eqBar4" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                     <TextView android:id="@+id/tvActiveKeywordsCount" android:layout_width="wrap_content" android:layout_height="wrap_content" />
-                    <TextView android:id="@+id/btnMiuiPopups" android:layout_width="wrap_content" android:layout_height="wrap_content" />
                 </LinearLayout>
 
                 <!-- Bottom Auto-Detect & Server IP Pill -->

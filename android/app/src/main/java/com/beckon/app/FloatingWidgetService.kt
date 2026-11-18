@@ -20,8 +20,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.core.app.NotificationCompat
-import com.beckon.app.util.ChimePlayer
-import com.beckon.app.util.HapticFeedback
+import androidx.core.content.ContextCompat
 import com.beckon.app.util.PreferencesManager
 import kotlin.math.abs
 
@@ -48,6 +47,7 @@ class FloatingWidgetService : Service() {
     private lateinit var btnCloseExpanded: ImageView
 
     private var isListening = false
+    private val autoDismissRunnable = Runnable { dismissAlert() }
     private val mainHandler = Handler(Looper.getMainLooper())
     private lateinit var prefs: PreferencesManager
 
@@ -175,6 +175,7 @@ class FloatingWidgetService : Service() {
         }
         setupDragBehavior(screenWidth, screenHeight)
         setupClickListeners()
+        updateListeningUiState(AudioCaptureService.instance != null)
     }
 
     private fun setupClickListeners() {
@@ -259,16 +260,13 @@ class FloatingWidgetService : Service() {
         viewCollapsed.visibility = View.VISIBLE
     }
 
-    private fun toggleListening() {
-        isListening = !isListening
-        val namesText = etTargetNames.text.toString().trim().ifEmpty { "Alex" }
-        prefs.targetNames = namesText
-
+    private fun updateListeningUiState(listening: Boolean) {
+        isListening = listening
+        val namesText = prefs.targetNames.ifEmpty { "Alex" }
         val namesList = namesText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
         val canonical = namesList.firstOrNull() ?: "Alex"
 
         if (isListening) {
-            AudioCaptureService.instance?.updateNames(canonical, namesList.drop(1))
             tvCollapsedStatus.text = "Listening · $canonical"
             dotActive.visibility = View.VISIBLE
             ivShazamIcon.setImageResource(R.drawable.ic_stop)
@@ -279,7 +277,32 @@ class FloatingWidgetService : Service() {
             ivShazamIcon.setImageResource(R.drawable.ic_mic)
             tvShazamActionText.text = "Tap to Listen"
         }
+    }
 
+    private fun toggleListening() {
+        val targetState = !isListening
+        val namesText = etTargetNames.text.toString().trim().ifEmpty { "Alex" }
+        prefs.targetNames = namesText
+
+        val namesList = namesText.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+        val canonical = namesList.firstOrNull() ?: "Alex"
+
+        if (targetState) {
+            val captureIntent = Intent(this, AudioCaptureService::class.java).apply {
+                action = AudioCaptureService.ACTION_START
+                putExtra(AudioCaptureService.EXTRA_SOURCE_TYPE, AudioCaptureService.SOURCE_MIC)
+                putExtra(AudioCaptureService.EXTRA_SERVER_URL, "ws://" + prefs.serverIp)
+                putStringArrayListExtra(AudioCaptureService.EXTRA_NAMES, ArrayList(namesList))
+            }
+            ContextCompat.startForegroundService(this, captureIntent)
+        } else {
+            val captureIntent = Intent(this, AudioCaptureService::class.java).apply {
+                action = AudioCaptureService.ACTION_STOP
+            }
+            startService(captureIntent)
+        }
+
+        updateListeningUiState(targetState)
         collapseWidget()
     }
 
@@ -292,8 +315,8 @@ class FloatingWidgetService : Service() {
 
     fun showAlert(speaker: String, sentence: String, @Suppress("UNUSED_PARAMETER") score: Double) {
         mainHandler.post {
-            ChimePlayer.playChime()
-            HapticFeedback.triggerAlertVibration(this)
+            // Chime and vibration are handled by AudioCaptureService.postAlertNotification()
+            // to avoid double chime+vibration when the floating widget is also active.
 
             if (!::floatingView.isInitialized) return@post
 
@@ -309,12 +332,13 @@ class FloatingWidgetService : Service() {
             viewExpanded.visibility = View.GONE
             viewAlert.visibility = View.VISIBLE
 
-            mainHandler.removeCallbacksAndMessages(null)
-            mainHandler.postDelayed({ dismissAlert() }, 10_000)
+            mainHandler.removeCallbacks(autoDismissRunnable)
+            mainHandler.postDelayed(autoDismissRunnable, 10_000)
         }
     }
 
     private fun dismissAlert() {
+        mainHandler.removeCallbacks(autoDismissRunnable)
         viewAlert.visibility = View.GONE
         viewExpanded.visibility = View.GONE
         viewCollapsed.visibility = View.VISIBLE
@@ -324,7 +348,7 @@ class FloatingWidgetService : Service() {
     }
 
     override fun onDestroy() {
-        mainHandler.removeCallbacksAndMessages(null)
+        mainHandler.removeCallbacks(autoDismissRunnable)
         if (::floatingView.isInitialized) {
             try { windowManager.removeView(floatingView) } catch (_: Exception) {}
         }

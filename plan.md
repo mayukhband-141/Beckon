@@ -1,8 +1,7 @@
-# Project Plan: "Beckon" (working title)
+# [ARCHIVED] Historical Project Plan: Beckon v0.1
 
-> A background app / browser extension that listens to meeting audio, detects when **your name** is said, and tells you **who said it** and **what was just asked**.
-
-Status: Planning · Version: 0.1 · Date: 2026-11-01
+> **Status:** ARCHIVED · For current production architecture and shipped milestones, see `README.md` and `docs/`.  
+> This document is retained for historical reference only. Shipped implementations (Tiers 1–5: streaming Whisper STT, acoustic DTW keyword spotting, vocative intent classification, passive speaker ID, Android companion app, and Chrome MV3 extension) supersede this initial v0.1 planning draft.
 
 ---
 

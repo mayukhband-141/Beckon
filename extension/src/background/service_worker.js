@@ -98,6 +98,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           alert: message.alert
         }).catch(() => {});
       }
+      sendResponse({ status: "ok" });
+      return;
     }
 
     // Forward active speaker updates from content script to offscreen doc
@@ -107,6 +109,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         active_speaker: message.active_speaker,
         roster: message.roster
       }).catch(() => {});
+      sendResponse({ status: "ok" });
+      return;
     }
 
     // Forward config updates to offscreen doc
@@ -115,6 +119,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         action: "CONFIG_UPDATE",
         config: message.config
       }).catch(() => {});
+      sendResponse({ status: "ok" });
+      return;
     }
   })();
   return true;

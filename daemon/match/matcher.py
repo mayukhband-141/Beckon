@@ -103,12 +103,16 @@ class NameMatcher:
     def _extract_context_clause(text: str, detected_word: str) -> str:
         """Extract only the specific sentence/clause containing the detected name."""
         sentences = re.split(r'(?<=[.!?।\n])\s+', text.strip())
-        clean_target = re.sub(r'[^\w\s]', '', detected_word, flags=re.UNICODE).lower()
+        clean_target = re.sub(r'[^\w\s]', '', detected_word, flags=re.UNICODE).lower().strip()
 
         for s in sentences:
             clean_s = re.sub(r'[^\w\s]', '', s, flags=re.UNICODE).lower()
-            if clean_target in clean_s.split():
-                return s.strip()
+            if " " in clean_target:
+                if clean_target in clean_s:
+                    return s.strip()
+            else:
+                if clean_target in clean_s.split():
+                    return s.strip()
 
         return sentences[-1].strip() if sentences else text.strip()
 

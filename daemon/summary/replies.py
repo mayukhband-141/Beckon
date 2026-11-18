@@ -17,8 +17,10 @@ class QuickReplyGenerator:
     def generate_replies(self, target_name: str, sentence: str, summary: Optional[str] = None) -> List[str]:
         """
         Generates 3 tailored, 1-click response options based on the detected speech act.
+        Combines original sentence and LLM summary context.
         """
-        text = (sentence or "").lower()
+        combined = f"{sentence or ''} {summary or ''}"
+        text = combined.lower()
         clean_name = target_name.strip()
 
         # 1. Screen sharing / Presentation request

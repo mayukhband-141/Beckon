@@ -120,13 +120,15 @@
       btn.addEventListener("click", () => {
         const replyText = btn.getAttribute("data-reply");
         if (replyText) {
-          navigator.clipboard.writeText(replyText).catch(() => {});
-          const originalHtml = btn.innerHTML;
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(replyText).catch(() => {});
+          }
+          const originalText = btn.textContent;
           btn.classList.add("copied");
-          btn.innerHTML = `<span>✓ Copied to clipboard</span>`;
+          btn.textContent = "✓ Copied to clipboard";
           setTimeout(() => {
             btn.classList.remove("copied");
-            btn.innerHTML = originalHtml;
+            btn.textContent = originalText;
           }, 2000);
 
           // If chat input exists in Google Meet, paste text into it

@@ -23,7 +23,7 @@ def main():
     parser = argparse.ArgumentParser(description="Beckon Meeting Audio Daemon")
     parser.add_argument("--host", default=None, help="Host address to bind (defaults to 127.0.0.1 or BECKON_HOST)")
     parser.add_argument("--lan", action="store_true", help="Bind to 0.0.0.0 to allow companion devices on local network")
-    parser.add_argument("--port", type=int, default=8765, help="Port to listen on")
+    parser.add_argument("--port", type=int, default=None, help="Port to listen on (defaults to BECKON_PORT or 8765)")
     parser.add_argument("--model", default=None, help="Whisper model (tiny, base, small, medium)")
     parser.add_argument("--groq-key", default=None, help="Groq API key for catch-up summary notifications")
     parser.add_argument("--ollama-url", default=None, help="Ollama endpoint URL (e.g. http://localhost:11434)")
@@ -44,7 +44,10 @@ def main():
     else:
         logger.info("No .env file found; using system environment and default values.")
 
-    config = DaemonConfig(port=args.port)
+    config_kwargs = {}
+    if args.port is not None:
+        config_kwargs["port"] = args.port
+    config = DaemonConfig(**config_kwargs)
     if args.model:
         config.whisper_model = args.model
     if args.groq_key:

@@ -69,7 +69,37 @@ class BeckonServer:
     async def handle_connection(self, websocket: WebSocketServerProtocol):
         logger.info(f"New client connected from {websocket.remote_address}")
         self.connected_clients.add(websocket)
-        authenticated = True  # Can enforce token verification
+
+        # Origin validation: block arbitrary browser websites from DNS-rebinding / hijacking
+        req = getattr(websocket, "request", None)
+        origin = req.headers.get("Origin", "") if req else ""
+        if origin and not (
+            origin.startswith("chrome-extension://")
+            or "localhost" in origin
+            or "127.0.0.1" in origin
+        ):
+            logger.warning("Rejected WebSocket connection from unauthorized origin: %s", origin)
+            await websocket.close(4003, "Forbidden Origin")
+            return
+
+        # Token auth: check Authorization header or query parameter
+        token_found = ""
+        if req:
+            auth_val = req.headers.get("Authorization", "")
+            if auth_val.startswith("Bearer "):
+                token_found = auth_val[7:].strip()
+            elif auth_val:
+                token_found = auth_val.strip()
+            if not token_found and "?" in req.path:
+                from urllib.parse import parse_qs, urlparse
+                qs = parse_qs(urlparse(req.path).query)
+                token_found = qs.get("token", [""])[0]
+
+        expected = self.config.auth_token
+        authenticated = (not expected) or (token_found == expected)
+        if not authenticated:
+            await websocket.close(4001, "Unauthorized")
+            return
 
         try:
             # Send initial greeting & config
@@ -86,6 +116,8 @@ class BeckonServer:
             async for message in websocket:
                 if isinstance(message, bytes):
                     # PCM16 16kHz mono audio frame from client
+                    if len(message) % 2 != 0:
+                        message = message[:-1]  # drop trailing incomplete sample
                     self.current_audio_source = websocket
                     self.ring_buffer.append_pcm16_bytes(message)
 
@@ -94,6 +126,9 @@ class BeckonServer:
                     if kws_event:
                         logger.debug("Acoustic KWS Fast-Path triggered (Score: %.2f)", kws_event.get("score", 0.0))
                 elif isinstance(message, str):
+                    if len(message) > 65536:  # 64KB text limit
+                        logger.warning("Oversized text message dropped (%d bytes)", len(message))
+                        continue
                     try:
                         data = json.loads(message)
                         msg_type = data.get("type")
@@ -115,8 +150,12 @@ class BeckonServer:
                                 logger.info("Updated Groq API Key from client UI (enabled=%s)", self.pipeline.summarizer.is_enabled)
 
                             if "ollama_url" in data:
-                                self.config.ollama_url = str(data["ollama_url"]).strip()
-                                self.pipeline.summarizer.ollama_url = self.config.ollama_url
+                                url = str(data["ollama_url"]).strip()
+                                if url.startswith(("http://localhost", "http://127.0.0.1", "http://0.0.0.0")):
+                                    self.config.ollama_url = url
+                                    self.pipeline.summarizer.ollama_url = url
+                                else:
+                                    logger.warning("Rejected non-local ollama_url: %s", url)
                                 logger.info("Updated Ollama URL from client UI (enabled=%s)", self.pipeline.summarizer.is_enabled)
 
                             await websocket.send(json.dumps({
@@ -173,7 +212,6 @@ class BeckonServer:
             pairing_json = json.dumps(self.beacon.get_pairing_payload(), indent=2)
             resp = connection.respond(http.HTTPStatus.OK, pairing_json)
             resp.headers["Content-Type"] = "application/json"
-            resp.headers["Access-Control-Allow-Origin"] = "*"
             return resp
         return None
 
@@ -198,3 +236,5 @@ class BeckonServer:
             self.beacon.stop()
             if self.loopback:
                 self.loopback.stop()
+            server.close()
+            await server.wait_closed()
