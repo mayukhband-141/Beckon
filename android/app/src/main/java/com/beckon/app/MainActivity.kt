@@ -24,6 +24,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.beckon.app.util.PreferencesManager
 import kotlinx.coroutines.launch
+import org.json.JSONObject
 import java.net.ConnectException
 import java.net.InetSocketAddress
 import java.net.Socket
@@ -42,6 +43,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var btnChangeTargetName: View
     private lateinit var tvShazamTargetName: TextView
     private lateinit var btnAutoScanIp: View
+    private lateinit var btnScanQrHero: View
+    private lateinit var btnScanQrConfig: View
     private lateinit var tvCurrentIpDisplay: TextView
     private lateinit var tvScanLabel: TextView
     private var pulseAnimator: android.animation.ValueAnimator? = null
@@ -145,6 +148,17 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private val qrScanLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val scanned = result.data?.getStringExtra("SCAN_RESULT")
+            if (!scanned.isNullOrBlank()) {
+                parseAndApplyPairing(scanned)
+            }
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         instance = this
@@ -171,24 +185,87 @@ class MainActivity : AppCompatActivity() {
 
     private fun handlePairingIntent(intent: Intent?) {
         val uri = intent?.data ?: return
-        if (uri.scheme == "beckon" && uri.host == "pair") {
-            val ipParam = uri.getQueryParameter("ip")
-            val tokenParam = uri.getQueryParameter("token")
-            if (!ipParam.isNullOrBlank()) {
-                val cleanIp = ipParam.trim()
-                prefs.serverIp = cleanIp
-                if (::etServerIp.isInitialized) {
-                    etServerIp.setText(cleanIp)
+        parseAndApplyPairing(uri.toString())
+    }
+
+    private fun startInAppQrScan() {
+        try {
+            val options = com.google.android.gms.code.scanner.GmsBarcodeScannerOptions.Builder()
+                .setBarcodeFormats(com.google.android.gms.code.scanner.GmsBarcodeScannerOptions.FORMAT_QR_CODE)
+                .enableAutoZoom()
+                .build()
+            val scanner = com.google.android.gms.code.scanner.GmsBarcodeScanning.getClient(this, options)
+            scanner.startScan()
+                .addOnSuccessListener { barcode ->
+                    val raw = barcode.rawValue
+                    if (!raw.isNullOrBlank()) {
+                        parseAndApplyPairing(raw)
+                    }
                 }
-                tvCurrentIpDisplay.text = cleanIp
-                tvScanLabel.text = "✓ Paired via QR"
-                btnAutoScanIp.visibility = View.VISIBLE
-                pingDaemon()
+                .addOnFailureListener {
+                    launchSystemBarcodeScanner()
+                }
+        } catch (_: Exception) {
+            launchSystemBarcodeScanner()
+        }
+    }
+
+    private fun launchSystemBarcodeScanner() {
+        try {
+            val intent = Intent("com.google.zxing.client.android.SCAN").apply {
+                putExtra("SCAN_MODE", "QR_CODE_MODE")
             }
-            if (!tokenParam.isNullOrBlank()) {
-                prefs.authToken = tokenParam.trim()
+            qrScanLauncher.launch(intent)
+        } catch (_: Exception) {
+            Toast.makeText(this, "Point your camera at the PC terminal QR code to pair", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    fun parseAndApplyPairing(raw: String) {
+        val text = raw.trim()
+        var targetIp = ""
+        var targetToken = ""
+
+        if (text.startsWith("beckon://pair")) {
+            val uri = Uri.parse(text)
+            targetIp = uri.getQueryParameter("ip") ?: ""
+            targetToken = uri.getQueryParameter("token") ?: ""
+        } else if (text.startsWith("http://") || text.startsWith("https://") || text.startsWith("ws://")) {
+            val uri = Uri.parse(text)
+            val host = uri.host ?: ""
+            val port = if (uri.port > 0) uri.port else 8765
+            if (host.isNotBlank()) {
+                targetIp = "$host:$port"
             }
-            Toast.makeText(this, "✓ Paired with Beckon: ${prefs.serverIp}", Toast.LENGTH_LONG).show()
+            targetToken = uri.getQueryParameter("token") ?: ""
+        } else if (text.startsWith("{") && text.endsWith("}")) {
+            try {
+                val json = JSONObject(text)
+                val host = json.optString("host", "")
+                val port = json.optInt("port", 8765)
+                targetIp = json.optString("ip", if (host.isNotBlank()) "$host:$port" else "")
+                targetToken = json.optString("token", "")
+            } catch (_: Exception) {}
+        } else if (text.contains(":") && !text.contains(" ")) {
+            targetIp = text
+        }
+
+        if (targetIp.isNotBlank()) {
+            val cleanIp = targetIp.trim()
+            prefs.serverIp = cleanIp
+            if (::etServerIp.isInitialized) {
+                etServerIp.setText(cleanIp)
+            }
+            tvCurrentIpDisplay.text = cleanIp
+            tvScanLabel.text = "✓ Paired via QR"
+            btnAutoScanIp.visibility = View.VISIBLE
+            if (targetToken.isNotBlank()) {
+                prefs.authToken = targetToken.trim()
+            }
+            pingDaemon()
+            Toast.makeText(this, "✓ Paired with Beckon: $cleanIp", Toast.LENGTH_LONG).show()
+        } else {
+            Toast.makeText(this, "Unrecognized QR code: $text", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -210,6 +287,8 @@ class MainActivity : AppCompatActivity() {
         btnChangeTargetName = findViewById(R.id.btnChangeTargetName)
         tvShazamTargetName = findViewById(R.id.tvShazamTargetName)
         btnAutoScanIp = findViewById(R.id.btnAutoScanIp)
+        btnScanQrHero = findViewById(R.id.btnScanQrHero)
+        btnScanQrConfig = findViewById(R.id.btnScanQrConfig)
         tvCurrentIpDisplay = findViewById(R.id.tvCurrentIpDisplay)
         tvScanLabel = findViewById(R.id.tvScanLabel)
 
@@ -528,6 +607,14 @@ class MainActivity : AppCompatActivity() {
 
         btnAutoScanIp.setOnClickListener {
             autoDetectDaemon()
+        }
+
+        btnScanQrHero.setOnClickListener {
+            startInAppQrScan()
+        }
+
+        btnScanQrConfig.setOnClickListener {
+            startInAppQrScan()
         }
     }
 
