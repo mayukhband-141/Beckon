@@ -22,6 +22,9 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.codescanner.GmsBarcodeScanning
+import com.google.mlkit.vision.codescanner.GmsBarcodeScannerOptions
 import com.beckon.app.util.PreferencesManager
 import kotlinx.coroutines.launch
 import org.json.JSONObject
@@ -66,7 +69,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var rbMic: RadioButton
     private lateinit var rbInternal: RadioButton
     private lateinit var btnToggleFloating: TextView
-    private lateinit var btnStartListening: Button
     private lateinit var llAlertsContainer: LinearLayout
 
     // Dual-page navigation views
@@ -190,13 +192,13 @@ class MainActivity : AppCompatActivity() {
 
     private fun startInAppQrScan() {
         try {
-            val options = com.google.android.gms.code.scanner.GmsBarcodeScannerOptions.Builder()
-                .setBarcodeFormats(com.google.android.gms.code.scanner.GmsBarcodeScannerOptions.FORMAT_QR_CODE)
+            val options = GmsBarcodeScannerOptions.Builder()
+                .setBarcodeFormats(Barcode.FORMAT_QR_CODE)
                 .enableAutoZoom()
                 .build()
-            val scanner = com.google.android.gms.code.scanner.GmsBarcodeScanning.getClient(this, options)
+            val scanner = GmsBarcodeScanning.getClient(this, options)
             scanner.startScan()
-                .addOnSuccessListener { barcode ->
+                .addOnSuccessListener { barcode: Barcode ->
                     val raw = barcode.rawValue
                     if (!raw.isNullOrBlank()) {
                         parseAndApplyPairing(raw)
@@ -309,7 +311,6 @@ class MainActivity : AppCompatActivity() {
         rbMic = findViewById(R.id.rbMic)
         rbInternal = findViewById(R.id.rbInternal)
         btnToggleFloating = findViewById(R.id.btnToggleFloating)
-        btnStartListening = findViewById(R.id.btnStartListening)
         llAlertsContainer = findViewById(R.id.llAlertsContainer)
 
         // Dual-page view bindings
@@ -439,30 +440,10 @@ class MainActivity : AppCompatActivity() {
             stopPulseAnimation()
         }
 
-        if (btnStartListening is com.google.android.material.button.MaterialButton) {
-            val mb = btnStartListening as com.google.android.material.button.MaterialButton
-            if (isListening) {
-                mb.text = "Stop Monitoring"
-                mb.setIconResource(R.drawable.ic_stop)
-                mb.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_red)
-                mb.setTextColor(ContextCompat.getColor(this, R.color.text_primary))
-                mb.iconTint = ContextCompat.getColorStateList(this, R.color.text_primary)
-                startEqualizerAnimation()
-            } else {
-                mb.text = "Start Monitoring"
-                mb.setIconResource(R.drawable.ic_nav_listener)
-                mb.backgroundTintList = ContextCompat.getColorStateList(this, R.color.accent_neutral)
-                mb.setTextColor(android.graphics.Color.parseColor("#09090B"))
-                mb.iconTint = android.content.res.ColorStateList.valueOf(android.graphics.Color.parseColor("#09090B"))
-                stopEqualizerAnimation()
-            }
+        if (isListening) {
+            startEqualizerAnimation()
         } else {
-            btnStartListening.text = if (isListening) "Stop Monitoring" else "Start Monitoring"
-            btnStartListening.backgroundTintList = ContextCompat.getColorStateList(
-                this,
-                if (isListening) R.color.accent_red else R.color.accent_neutral
-            )
-            if (isListening) startEqualizerAnimation() else stopEqualizerAnimation()
+            stopEqualizerAnimation()
         }
     }
 
@@ -582,14 +563,6 @@ class MainActivity : AppCompatActivity() {
         btnToggleFloating.setOnLongClickListener {
             openMiuiPermissions(this)
             true
-        }
-
-        btnStartListening.setOnClickListener {
-            if (!isListening) {
-                initiateListening()
-            } else {
-                stopListening()
-            }
         }
 
         // Shazam Hero Screen Click Listeners
@@ -817,7 +790,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val serverUrl = "ws://" + prefs.serverIp
+        val token = prefs.authToken
+        val serverUrl = if (token.isNotBlank()) "ws://${prefs.serverIp}?token=$token" else "ws://" + prefs.serverIp
         val namesList = prefs.targetNames.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
         val captureIntent = Intent(this, AudioCaptureService::class.java).apply {

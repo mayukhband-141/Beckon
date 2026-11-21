@@ -10,6 +10,7 @@ class PreferencesManager(context: Context) {
 
     companion object {
         private const val KEY_SERVER_IP = "server_ip"
+        private const val KEY_AUTH_TOKEN = "auth_token"
         private const val KEY_TARGET_NAMES = "target_names"
         private const val KEY_AUDIO_SOURCE = "audio_source"
         private const val KEY_ALERTS_LOG = "alerts_log"
@@ -22,6 +23,10 @@ class PreferencesManager(context: Context) {
     var serverIp: String
         get() = prefs.getString(KEY_SERVER_IP, DEFAULT_SERVER_IP) ?: DEFAULT_SERVER_IP
         set(value) = prefs.edit().putString(KEY_SERVER_IP, value).apply()
+
+    var authToken: String
+        get() = prefs.getString(KEY_AUTH_TOKEN, "") ?: ""
+        set(value) = prefs.edit().putString(KEY_AUTH_TOKEN, value).apply()
 
     var targetNames: String
         get() = prefs.getString(KEY_TARGET_NAMES, DEFAULT_NAMES) ?: DEFAULT_NAMES
