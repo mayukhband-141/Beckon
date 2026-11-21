@@ -155,10 +155,40 @@ class MainActivity : AppCompatActivity() {
         loadPreferences()
         setupListeners()
         refreshAlerts()
+        handlePairingIntent(intent)
         if (prefs.serverIp.isBlank() || prefs.serverIp.startsWith("192.168.1.100")) {
             autoDetectDaemon()
         } else {
             pingDaemon()
+        }
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handlePairingIntent(intent)
+    }
+
+    private fun handlePairingIntent(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (uri.scheme == "beckon" && uri.host == "pair") {
+            val ipParam = uri.getQueryParameter("ip")
+            val tokenParam = uri.getQueryParameter("token")
+            if (!ipParam.isNullOrBlank()) {
+                val cleanIp = ipParam.trim()
+                prefs.serverIp = cleanIp
+                if (::etServerIp.isInitialized) {
+                    etServerIp.setText(cleanIp)
+                }
+                tvCurrentIpDisplay.text = cleanIp
+                tvScanLabel.text = "✓ Paired via QR"
+                btnAutoScanIp.visibility = View.VISIBLE
+                pingDaemon()
+            }
+            if (!tokenParam.isNullOrBlank()) {
+                prefs.authToken = tokenParam.trim()
+            }
+            Toast.makeText(this, "✓ Paired with Beckon: ${prefs.serverIp}", Toast.LENGTH_LONG).show()
         }
     }
 

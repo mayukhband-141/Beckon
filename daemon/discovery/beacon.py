@@ -51,6 +51,31 @@ class UDPDiscoveryBeacon:
             "ws_url": f"ws://{self.local_ip}:{self.ws_port}",
         }
 
+    def generate_qr_ascii(self) -> str:
+        """Generates an ANSI/Unicode terminal QR code for 1-tap phone camera pairing."""
+        try:
+            import io
+            import qrcode
+            pair_uri = f"beckon://pair?ip={self.local_ip}:{self.ws_port}"
+            if self.auth_token:
+                pair_uri += f"&token={self.auth_token}"
+
+            qr = qrcode.QRCode(
+                version=None,
+                error_correction=qrcode.constants.ERROR_CORRECT_L,
+                box_size=1,
+                border=1
+            )
+            qr.add_data(pair_uri)
+            qr.make(fit=True)
+
+            buf = io.StringIO()
+            qr.print_ascii(out=buf, invert=True)
+            return buf.getvalue().rstrip()
+        except Exception as e:
+            logger.debug("QR code generation not available: %s", e)
+            return ""
+
     def print_terminal_card(self):
         """Prints a pairing card in the console on daemon launch."""
         ip = self.local_ip
@@ -73,6 +98,14 @@ class UDPDiscoveryBeacon:
             print("-" * box_width)
             print(f"  • Auth Token (enter manually in the app):")
             print(f"    {self.auth_token}")
+
+        qr_ascii = self.generate_qr_ascii()
+        if qr_ascii:
+            print("-" * box_width)
+            print("  [Scan QR with Phone Camera to Pair Instantly]:\n")
+            for line in qr_ascii.splitlines():
+                print(f"    {line}")
+
         print("=" * box_width + "\n")
 
     async def _broadcast_loop(self):
