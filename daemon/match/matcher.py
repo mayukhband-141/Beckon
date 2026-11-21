@@ -211,7 +211,7 @@ class NameMatcher:
                         cue_boost -= 0.12
 
                     context_clause = self._extract_context_clause(text, candidate_str)
-                    intent_res = self.intent_classifier.classify(context_clause, candidate_str)
+                    intent_res = self.intent_classifier.classify(context_clause, target)
 
                     # Tier 4 Phase 2: Semantic Intent Modifier
                     final_score = min(1.0, max(0.0, base_score + cue_boost + intent_res.score_modifier))

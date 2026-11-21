@@ -39,7 +39,7 @@ def simulate_pipeline_matching():
             print(f"       -> Detected: '{res.detected_phrase}', Target: '{res.target_name}', Boost: {res.cue_boost}")
 
     print(f"\nResult: {passed}/{len(test_cases)} tests passed.")
-    assert passed >= 4, "Matcher accuracy check failed"
+    assert passed == len(test_cases), f"Expected {len(test_cases)} passing tests, got {passed}"
 
 if __name__ == "__main__":
     simulate_pipeline_matching()
