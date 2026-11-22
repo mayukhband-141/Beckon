@@ -15,6 +15,7 @@ class AudioStreamer(
 ) {
     private val client = OkHttpClient.Builder()
         .readTimeout(0, TimeUnit.MILLISECONDS)
+        .pingInterval(15, TimeUnit.SECONDS)
         .build()
 
     private var webSocket: WebSocket? = null
@@ -54,9 +55,10 @@ class AudioStreamer(
             override fun onMessage(webSocket: WebSocket, text: String) {
                 try {
                     val json = JSONObject(text)
-                    if (json.optString("type") == "alert") {
+                    val msgType = json.optString("type")
+                    if (msgType == "alert" || msgType == "alert_update") {
                         val speaker = json.optString("speaker", "Someone")
-                        val sentence = json.optString("sentence", "Your name was called in the call.")
+                        val sentence = json.optString("sentence", json.optString("summary", "Your name was called in the call."))
                         val score = json.optDouble("score", 0.9)
                         val quickRepliesList = mutableListOf<String>()
                         val repliesArr = json.optJSONArray("quick_replies")
@@ -90,15 +92,10 @@ class AudioStreamer(
     }
 
     private fun scheduleReconnect() {
-        if (reconnectPending || reconnectAttempts >= maxReconnectAttempts) {
-            if (reconnectAttempts >= maxReconnectAttempts) {
-                Log.e("AudioStreamer", "Max reconnect attempts ($maxReconnectAttempts) reached — giving up")
-            }
-            return
-        }
+        if (reconnectPending) return
         reconnectAttempts++
-        val delayMs = baseReconnectDelayMs * (1L shl (reconnectAttempts - 1)) // 2s, 4s, 8s, 16s, 32s
-        Log.d("AudioStreamer", "Reconnect attempt $reconnectAttempts/$maxReconnectAttempts in ${delayMs}ms")
+        val delayMs = minOf(15000L, baseReconnectDelayMs * (1L shl minOf(reconnectAttempts - 1, 4)))
+        Log.d("AudioStreamer", "Reconnecting to $serverUrl in ${delayMs}ms (attempt $reconnectAttempts)")
         reconnectPending = true
         reconnectHandler.postDelayed({
             reconnectPending = false

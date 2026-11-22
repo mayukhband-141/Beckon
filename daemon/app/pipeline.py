@@ -73,6 +73,14 @@ class DetectionPipeline:
         self.processed_texts = deque(maxlen=50)
         self._loop = None  # Set in run_loop(); used for thread-safe wake_event.set()
 
+    def stop(self):
+        """Signal the processing loop to shut down cleanly."""
+        self.is_running = False
+        if hasattr(self, '_loop') and self._loop and self._loop.is_running():
+            self._loop.call_soon_threadsafe(self.wake_event.set)
+        else:
+            self.wake_event.set()
+
     def update_name_profile(self, canonical_name: str, aliases: list, sensitivity: str):
         self.config.name_profile.canonical_name = canonical_name
         self.config.name_profile.aliases = aliases
@@ -135,8 +143,18 @@ class DetectionPipeline:
                     else:
                         self.last_processed_sample = current_total
 
-                        # Build hotwords from enrolled names (if dynamically registered by client)
-                        names_str = ", ".join(self.config.name_profile.all_names) if self.config.name_profile.all_names else None
+                        # Build hotwords from enrolled names + phonetic variants
+                        hotwords_list = []
+                        if self.name_matcher and hasattr(self.name_matcher, 'expanded_map'):
+                            for target, vars_list in self.name_matcher.expanded_map.items():
+                                if target not in hotwords_list:
+                                    hotwords_list.append(target)
+                                for v in vars_list:
+                                    if v.isascii() and v not in hotwords_list:
+                                        hotwords_list.append(v)
+                        elif self.config.name_profile.all_names:
+                            hotwords_list.extend(self.config.name_profile.all_names)
+                        names_str = ", ".join(hotwords_list[:12]) if hotwords_list else None
 
                         # 2. Transcribe in threadpool with Banglish & multilingual support
                         text, words = await asyncio.to_thread(
@@ -192,20 +210,14 @@ class DetectionPipeline:
                                     match.target_name, match.score, match.detected_phrase
                                 )
 
-                                # Tier 3: LLM Catch-Up Summarization (Groq or Ollama, with instant fallback)
-                                summary_sentence = await self.summarizer.async_summarize(
-                                    target_name=match.target_name,
-                                    snippet=context_clause,
-                                    full_context=self.ring_buffer.get_recent_transcript_context(30.0)
-                                )
-
-                                # Tier 5: Contextual Quick-Reply Generation
+                                # Tier 5: Contextual Quick-Reply Generation (instant rule-based heuristics <0.1ms)
                                 quick_replies = self.reply_generator.generate_replies(
                                     target_name=match.target_name,
                                     sentence=context_clause,
-                                    summary=summary_sentence
+                                    summary=None
                                 )
 
+                                # 1. DISPATCH ALERT IMMEDIATELY (<10ms!) - Never wait for external LLM network APIs
                                 alert_event = {
                                     "type": "alert",
                                     "name": match.target_name,
@@ -216,15 +228,25 @@ class DetectionPipeline:
                                     "word_confidence": match.word_confidence,
                                     "kws_fast_path": is_kws_fast_track,
                                     "kws_score": kws_hit_info.get("score") if kws_hit_info else None,
-                                    "sentence": summary_sentence,
+                                    "sentence": context_clause,
                                     "raw_sentence": context_clause,
                                     "quick_replies": quick_replies,
                                     "rolling_transcript": self.ring_buffer.get_recent_transcript_context(45.0),
                                     "timestamp": now
                                 }
-                                logger.info(f"*** NAME DETECTED ***: {alert_event}")
+                                logger.info(f"🚨 *** NAME DETECTED (INSTANT ALERT) ***: {alert_event}")
                                 if self.on_alert_callback:
                                     await self.on_alert_callback(alert_event)
+
+                                # 2. RUN LLM ENRICHMENT ASYNCHRONOUSLY IN BACKGROUND (non-blocking)
+                                if self.summarizer.is_enabled:
+                                    asyncio.create_task(
+                                        self._async_enrich_alert_summary(
+                                            alert_event=alert_event,
+                                            target_name=match.target_name,
+                                            context_clause=context_clause
+                                        )
+                                    )
 
             except Exception as e:
                 logger.error(f"Error in pipeline cycle: {e}", exc_info=True)
@@ -237,6 +259,35 @@ class DetectionPipeline:
                 logger.debug("Detection pipeline awakened early by KWS fast-path trigger")
             except asyncio.TimeoutError:
                 pass
+
+    async def _async_enrich_alert_summary(self, alert_event: dict, target_name: str, context_clause: str):
+        """Asynchronously queries LLM for a 1-line summary and broadcasts an alert_update without delaying the initial alert."""
+        try:
+            summary = await self.summarizer.async_summarize(
+                target_name=target_name,
+                snippet=context_clause,
+                full_context=self.ring_buffer.get_recent_transcript_context(30.0)
+            )
+            if summary and summary != context_clause:
+                enriched_replies = self.reply_generator.generate_replies(
+                    target_name=target_name,
+                    sentence=context_clause,
+                    summary=summary
+                )
+                update_event = {
+                    "type": "alert_update",
+                    "name": target_name,
+                    "sentence": summary,
+                    "summary": summary,
+                    "raw_sentence": context_clause,
+                    "quick_replies": enriched_replies,
+                    "timestamp": alert_event["timestamp"]
+                }
+                logger.debug(f"*** ASYNC LLM SUMMARY ENRICHED ***: {summary}")
+                if self.on_alert_callback:
+                    await self.on_alert_callback(update_event)
+        except Exception as e:
+            logger.debug("Async LLM summarization skipped: %s", e)
 
     def stop(self):
         self.is_running = False

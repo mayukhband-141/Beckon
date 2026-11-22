@@ -227,6 +227,8 @@ class BeckonServer:
             self.config.host,
             self.config.port,
             process_request=self.process_http_request,
+            ping_interval=15,
+            ping_timeout=10,
             max_size=10 * 1024 * 1024  # 10MB max message size
         )
         pipeline_task = asyncio.create_task(self.pipeline.run_loop())
@@ -236,5 +238,17 @@ class BeckonServer:
             self.beacon.stop()
             if self.loopback:
                 self.loopback.stop()
+            self.pipeline.stop()
+            if not pipeline_task.done():
+                pipeline_task.cancel()
+                try:
+                    await pipeline_task
+                except asyncio.CancelledError:
+                    pass
+            if self.connected_clients:
+                await asyncio.gather(
+                    *[c.close(1001, "Server shutting down") for c in list(self.connected_clients)],
+                    return_exceptions=True
+                )
             server.close()
             await server.wait_closed()

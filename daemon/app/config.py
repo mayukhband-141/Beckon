@@ -81,7 +81,7 @@ class DaemonConfig:
     whisper_device: str = "cpu"
     whisper_compute_type: str = "int8"
     whisper_threads: int = 4
-    min_word_confidence: float = float(os.getenv("BECKON_MIN_WORD_CONFIDENCE", "0.40"))
+    min_word_confidence: float = float(os.getenv("BECKON_MIN_WORD_CONFIDENCE", "0.15"))
     
     # Tier 4: Acoustic Keyword Spotting (KWS) Fast-Path
     enable_kws: bool = os.getenv("BECKON_ENABLE_KWS", "true").lower() in ("true", "1", "yes")

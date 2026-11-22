@@ -46,7 +46,7 @@ class NameMatcher:
     KNOWN_NAME_VARIANTS = {
         "mayukh": [
             "mayukh", "mayuk", "moyukh", "mayookh", "mayook", "myukh", "mayuq", "mayooq",
-            "mayukha", "moyuk", "mayukh's", "mayuk's",
+            "mayukha", "moyuk", "mayukh's", "mayuk's", "mayank", "mayur", "mio", "mayo",
             "ময়ূখ", "ময়ুখ", "মৈয়ুখ", "ময়ূখের", "ময়ুখের",
             "मयूख", "मयुक", "मयुख"
         ],
@@ -56,7 +56,7 @@ class NameMatcher:
         ]
     }
 
-    def __init__(self, names: List[str], threshold: float = 0.65, min_word_confidence: float = 0.20):
+    def __init__(self, names: List[str], threshold: float = 0.65, min_word_confidence: float = 0.15):
         self.names = [n.strip() for n in names if n.strip()]
         self.threshold = threshold
         self.min_word_confidence = min_word_confidence
@@ -66,6 +66,8 @@ class NameMatcher:
 
         # Build expanded multi-script & pronunciation map
         self.expanded_map = {}
+        self.phonetic_map = {}
+        self.soundex_map = {}
         self.phonetic_keys = []
         for n in self.names:
             clean = self._clean(n)
@@ -86,6 +88,19 @@ class NameMatcher:
             elif clean.startswith("mo"):
                 variants.add("ma" + clean[2:])
             self.expanded_map[n] = list(variants)
+            
+            p_set = set()
+            s_set = set()
+            for v in variants:
+                if v.isascii():
+                    m = jellyfish.metaphone(v)
+                    if m:
+                        p_set.add(m)
+                    sx = jellyfish.soundex(v)
+                    if sx:
+                        s_set.add(sx)
+            self.phonetic_map[n] = p_set
+            self.soundex_map[n] = s_set
             self.phonetic_keys.append(jellyfish.metaphone(clean) if clean.isascii() else "")
 
     @staticmethod
@@ -162,7 +177,7 @@ class NameMatcher:
                         if min_prob < self.min_word_confidence:
                             continue
 
-                for target, target_phonetic in zip(self.names, self.phonetic_keys):
+                for target in self.names:
                     target_clean = self._clean(target)
                     variants = self.expanded_map.get(target, [target_clean])
 
@@ -170,10 +185,28 @@ class NameMatcher:
                     if candidate_str == target_clean or candidate_str in variants:
                         base_score = 1.0
                     else:
-                        # 2. Phonetic match (ASCII)
+                        # 2. Phonetic match (ASCII) - requiring matching initial character sound
                         cand_phonetic = jellyfish.metaphone(candidate_str) if candidate_str.isascii() else ""
-                        phonetic_hit = bool(cand_phonetic and target_phonetic and cand_phonetic == target_phonetic)
-                        
+                        target_phonetics = self.phonetic_map.get(target, set())
+
+                        same_initial = bool(
+                            candidate_str and target_clean and
+                            candidate_str[0].lower() == target_clean[0].lower()
+                        )
+
+                        phonetic_hit = False
+                        if same_initial and cand_phonetic:
+                            if cand_phonetic in target_phonetics:
+                                phonetic_hit = True
+                            elif any(cand_phonetic.rstrip("H") == tp.rstrip("H") for tp in target_phonetics):
+                                phonetic_hit = True
+                            elif len(candidate_str) >= 4 and any(
+                                abs(len(cand_phonetic) - len(tp)) <= 1 and
+                                jellyfish.levenshtein_distance(cand_phonetic, tp) <= 1
+                                for tp in target_phonetics
+                            ):
+                                phonetic_hit = True
+
                         # 3. Fuzzy string similarity against target and variants
                         best_fuzzy = max([fuzz.ratio(candidate_str, v) for v in variants] + [fuzz.ratio(candidate_str, target_clean)]) / 100.0
 
@@ -184,7 +217,7 @@ class NameMatcher:
 
                     # Soft scale base score if confidence is low
                     if cand_confidence < 0.40:
-                        base_score *= max(0.80, cand_confidence)
+                        base_score *= max(0.85, cand_confidence)
 
                     # 4. Context cues
                     cue_boost = 0.0
@@ -206,12 +239,22 @@ class NameMatcher:
                     if has_question:
                         cue_boost += 0.05
 
-                    # Third-person penalty ("Alex's slide", "about Alex")
-                    if raw_words[word_indices[-1]].endswith("'s") or raw_words[word_indices[-1]].endswith("’s"):
-                        cue_boost -= 0.12
+                    # Third-person possessive penalty ("Alex's slide", "Mayukh's PR")
+                    is_possessive = raw_words[word_indices[-1]].endswith(("'s", "’s"))
+                    if is_possessive:
+                        cue_boost -= 0.35
 
                     context_clause = self._extract_context_clause(text, candidate_str)
-                    intent_res = self.intent_classifier.classify(context_clause, target)
+                    cand_base = candidate_str[:-2] if candidate_str.endswith(("'s", "’s")) else (
+                        candidate_str[:-1] if candidate_str.endswith("s") and len(candidate_str) > 3 and not target_clean.endswith("s")
+                        else candidate_str
+                    )
+                    intent_res = self.intent_classifier.classify(context_clause, cand_base)
+                    if not intent_res.signals:
+                        intent_res = self.intent_classifier.classify(context_clause, target_clean)
+
+                    if is_possessive and intent_res.is_direct_address:
+                        intent_res.is_direct_address = False
 
                     # Tier 4 Phase 2: Semantic Intent Modifier
                     final_score = min(1.0, max(0.0, base_score + cue_boost + intent_res.score_modifier))
