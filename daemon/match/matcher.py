@@ -69,9 +69,20 @@ class NameMatcher:
         self.phonetic_map = {}
         self.soundex_map = {}
         self.phonetic_keys = []
+        try:
+            from daemon.match.phonetic import PhoneticNameMatcher
+            self.phonetic_matcher = PhoneticNameMatcher()
+        except Exception:
+            self.phonetic_matcher = None
+
         for n in self.names:
             clean = self._clean(n)
             variants = {clean, n.lower()}
+            if self.phonetic_matcher:
+                try:
+                    self.phonetic_matcher.enroll(n)
+                except Exception:
+                    pass
             if clean in self.KNOWN_NAME_VARIANTS:
                 variants.update(self.KNOWN_NAME_VARIANTS[clean])
             # Auto-generate common phonetic variations
@@ -159,7 +170,12 @@ class NameMatcher:
                 (word, [i]),
             ]
             if i + 1 < len(words_cleaned):
-                candidates.append((f"{word} {words_cleaned[i+1]}", [i, i+1]))
+                if any(" " in t for t in self.names):
+                    candidates.append((f"{word} {words_cleaned[i+1]}", [i, i+1]))
+                elif not raw_words[i].endswith((".", ",", "!", "?", "'s", "’s")):
+                    joined = f"{word}{words_cleaned[i+1]}"
+                    if len(joined) <= 12:
+                        candidates.append((joined, [i, i+1]))
 
             for candidate_str, word_indices in candidates:
                 # Word-level confidence filtering (Tier 1)
@@ -185,7 +201,13 @@ class NameMatcher:
                     if candidate_str == target_clean or candidate_str in variants:
                         base_score = 1.0
                     else:
-                        # 2. Phonetic match (ASCII) - requiring matching initial character sound
+                        # 2. Articulatory & Phonetic Distance (Zero-Shot PanPhon + Metaphone)
+                        panphon_hit = False
+                        if self.phonetic_matcher:
+                            p_dist = self.phonetic_matcher.dist(candidate_str)
+                            if p_dist <= self.phonetic_matcher.soft:
+                                panphon_hit = True
+
                         cand_phonetic = jellyfish.metaphone(candidate_str) if candidate_str.isascii() else ""
                         target_phonetics = self.phonetic_map.get(target, set())
 
@@ -195,7 +217,9 @@ class NameMatcher:
                         )
 
                         phonetic_hit = False
-                        if same_initial and cand_phonetic:
+                        if panphon_hit and same_initial:
+                            phonetic_hit = True
+                        elif same_initial and cand_phonetic:
                             if cand_phonetic in target_phonetics:
                                 phonetic_hit = True
                             elif any(cand_phonetic.rstrip("H") == tp.rstrip("H") for tp in target_phonetics):
@@ -240,7 +264,7 @@ class NameMatcher:
                         cue_boost += 0.05
 
                     # Third-person possessive penalty ("Alex's slide", "Mayukh's PR")
-                    is_possessive = raw_words[word_indices[-1]].endswith(("'s", "’s"))
+                    is_possessive = any(raw_words[idx].endswith(("'s", "’s")) for idx in word_indices)
                     if is_possessive:
                         cue_boost -= 0.35
 
